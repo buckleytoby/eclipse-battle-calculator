@@ -20,7 +20,59 @@ import Select from '@mui/material/Select';
 
 */
 
-export function ShipSelect() {
+// defaults
+const defaults = {
+  interceptor: {
+    nb_ships: 0,
+    nb_shields: 0,
+    nb_computers: 0,
+    nb_yellow: 1,
+    nb_orange: 0,
+    nb_red: 0,
+    nb_yellow_missiles: 0,
+    nb_orange_missiles: 0,
+    nb_hull: 0,
+    nb_initiative: 3
+  },
+  cruiser: {
+    nb_ships: 0,
+    nb_shields: 0,
+    nb_computers: 1,
+    nb_yellow: 1,
+    nb_orange: 0,
+    nb_red: 0,
+    nb_yellow_missiles: 0,
+    nb_orange_missiles: 0,
+    nb_hull: 1,
+    nb_initiative: 2
+  },
+  dreadnought: {
+    nb_ships: 0,
+    nb_shields: 0,
+    nb_computers: 1,
+    nb_yellow: 2,
+    nb_orange: 0,
+    nb_red: 0,
+    nb_yellow_missiles: 0,
+    nb_orange_missiles: 0,
+    nb_hull: 2,
+    nb_initiative: 1
+  },
+  starbase: {
+    nb_ships: 0,
+    nb_shields: 0,
+    nb_computers: 1,
+    nb_yellow: 1,
+    nb_orange: 0,
+    nb_red: 0,
+    nb_yellow_missiles: 0,
+    nb_orange_missiles: 0,
+    nb_hull: 2,
+    nb_initiative: 4
+  }
+}
+
+export function ShipSelect(props) {
   const [nb_ships, setnbShips] = React.useState('');
   const [nb_shields, setshields] = React.useState('');
   const [nb_computers, setComputers] = React.useState('');
@@ -31,19 +83,48 @@ export function ShipSelect() {
   const [nb_orange_missiles, setnb_orange_missiles] = React.useState('');
   const [nb_hull, setnb_hull] = React.useState('');
   const [nb_initiative, setnb_initiative] = React.useState('');  
+  
+  // hook for resetting to defaults for parent to use
+  React.useEffect(() => {
+    if (props.reset_trigger) {
+      console.log('Resetting to Default');
+      setnbShips(defaults[props.shipType].nb_ships);
+      setshields(defaults[props.shipType].nb_shields);
+      setComputers(defaults[props.shipType].nb_computers);
+      setnb_yellow(defaults[props.shipType].nb_yellow);
+      setnb_orange(defaults[props.shipType].nb_orange);
+      setnb_red(defaults[props.shipType].nb_red);
+      setnb_yellow_missiles(defaults[props.shipType].nb_yellow_missiles);
+      setnb_orange_missiles(defaults[props.shipType].nb_orange_missiles);
+      setnb_hull(defaults[props.shipType].nb_hull);
+      setnb_initiative(defaults[props.shipType].nb_initiative);
+    }
+  }, [props.reset_trigger, props.shipType]);
 
   return (
     <Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          bgcolor: 'background.paper',
+          boxShadow: 1,
+          borderRadius: 2,
+          margin:'10px',
+          width: 350,
+        }}
+      >        
       <FormControl fullWidth sx={{width:100, p:1}}> {/* Nb Ships */}
         <InputLabel id="nb_ships"># of Ships</InputLabel>
         <Select
           labelId="nb_ships"
           id="ships_select"
+          defaultValue={nb_ships}
           value={nb_ships}
           label="# of Ships"
           onChange={(event) => {setnbShips(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -69,7 +150,7 @@ export function ShipSelect() {
           label="Computers"
           onChange={(event) => {setComputers(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -82,7 +163,7 @@ export function ShipSelect() {
           label="Hulls"
           onChange={(event) => {setnb_hull(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -95,16 +176,19 @@ export function ShipSelect() {
           label="Initiative"
           onChange={(event) => {setnb_initiative(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
+      </Box>
 
       <Box
         sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
           bgcolor: 'background.paper',
           boxShadow: 1,
           borderRadius: 2,
-          p: 1,
+          margin:'10px',
           width: 350,
         }}
       >
@@ -119,7 +203,7 @@ export function ShipSelect() {
           label="# Yellow Die"
           onChange={(event) => {setnb_yellow(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -132,7 +216,7 @@ export function ShipSelect() {
           label="# Orange Die"
           onChange={(event) => {setnb_orange(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -145,7 +229,7 @@ export function ShipSelect() {
           label="# Red Die"
           onChange={(event) => {setnb_red(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -153,10 +237,12 @@ export function ShipSelect() {
 
       <Box
         sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
           bgcolor: 'background.paper',
           boxShadow: 1,
           borderRadius: 2,
-          p: 1,
+          margin:'10px',
           width: 250,
         }}
       >
@@ -171,7 +257,7 @@ export function ShipSelect() {
           label="# Yellow Missiles"
           onChange={(event) => {setnb_yellow_missiles(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
 
@@ -184,7 +270,7 @@ export function ShipSelect() {
           label="# Orange Missiles"
           onChange={(event) => {setnb_orange_missiles(event.target.value)}}
         >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
+          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
         </Select>
       </FormControl>
       </Box>
