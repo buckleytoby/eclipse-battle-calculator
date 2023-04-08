@@ -4,6 +4,7 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
+import * as Globals from '../globals';
 
 
 /*
@@ -22,7 +23,7 @@ import Select from '@mui/material/Select';
 
 // defaults
 const defaults = {
-  interceptor: {
+  Interceptor: {
     nb_ships: 0,
     nb_shields: 0,
     nb_computers: 0,
@@ -34,7 +35,7 @@ const defaults = {
     nb_hull: 0,
     nb_initiative: 3
   },
-  cruiser: {
+  Cruiser: {
     nb_ships: 0,
     nb_shields: 0,
     nb_computers: 1,
@@ -46,7 +47,7 @@ const defaults = {
     nb_hull: 1,
     nb_initiative: 2
   },
-  dreadnought: {
+  Dreadnought: {
     nb_ships: 0,
     nb_shields: 0,
     nb_computers: 1,
@@ -58,7 +59,7 @@ const defaults = {
     nb_hull: 2,
     nb_initiative: 1
   },
-  starbase: {
+  Starbase: {
     nb_ships: 0,
     nb_shields: 0,
     nb_computers: 1,
@@ -103,8 +104,8 @@ export function ShipSelect(props) {
 
   React.useEffect(() => {
     if (props.begin_battle_trigger) {
-      let data = props.data
-      data[props.shipType] = {
+      console.log("Updating data")
+      props.data.current[props.shipType] = {
         'nb_ships': nb_ships,
         'nb_shields': nb_shields,
         'nb_computers': nb_computers,
@@ -117,7 +118,7 @@ export function ShipSelect(props) {
         'nb_initiative': nb_initiative,
       }
       // use the setter
-      props.setdata(data)
+      props.setup_trigger(1)
     }
   }, [props.begin_battle_trigger]);
 

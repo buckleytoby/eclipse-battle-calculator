@@ -7,14 +7,16 @@ import ResponsiveAppBar from './components/responsiveappbar';
 import {ShipSelect} from './components/selector';
 import Stack from '@mui/material/Stack';
 import BattleSim from './components/battle_sim';
-
+import * as Globals from './globals';
 
 
 function App() {
+  const data_attacker = React.useRef({});
+  const data_defender = React.useRef({});
   const [reset_trigger, setreset_trigger] = React.useState(0);
   const [begin_battle_trigger, setbegin_battle_trigger] = React.useState(0);
-  const [data_attacker, setdata_attacker] = React.useState({});
-  const [data_defender, setdata_defender] = React.useState({});
+  const [attacker_setup, setattacker_setup] = React.useState(0);
+  const [defender_setup, setdefender_setup] = React.useState(0);
 
   const reset_default = () => {
     console.log("App: Reset Default")
@@ -22,6 +24,8 @@ function App() {
   }
   const begin_battle_trigger_fcn = () => {
     console.log("App: Begin Battle Trigger")
+    setattacker_setup(0)
+    setdefender_setup(0)
     setbegin_battle_trigger(begin_battle_trigger + 1);
   }
 
@@ -33,23 +37,24 @@ function App() {
           <Stack direction="row" spacing={2}>
             <Box sx={{width: 900}}> {/* Attacker setup */}
               <h1>Attacker Setup</h1>
-              <h2>Interceptors</h2> <ShipSelect shipType='interceptor' reset_trigger={reset_trigger} data={data_attacker} setdata={setdata_attacker} begin_battle_trigger={begin_battle_trigger}></ShipSelect>
-              <h2>Cruisers</h2> <ShipSelect shipType='cruiser' reset_trigger={reset_trigger}></ShipSelect>
-              <h2>Dreadnoughts</h2> <ShipSelect shipType='dreadnought' reset_trigger={reset_trigger}></ShipSelect>
-              <h2>Starbases</h2> <ShipSelect shipType='starbase' reset_trigger={reset_trigger}></ShipSelect>
+            {Globals.shipTypes.map((shipType) => (
+              <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_attacker} setup_trigger={setattacker_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>
+            ))}
             </Box>
             <Box sx={{width: 900}}> {/* Defender setup */}
               <h1>Defender Setup</h1>
-              <h2>Interceptors</h2> <ShipSelect shipType='interceptor' reset_trigger={reset_trigger}></ShipSelect>
-              <h2>Cruisers</h2> <ShipSelect shipType='cruiser' reset_trigger={reset_trigger}></ShipSelect>
-              <h2>Dreadnoughts</h2> <ShipSelect shipType='dreadnought' reset_trigger={reset_trigger}></ShipSelect>
-              <h2>Starbases</h2> <ShipSelect shipType='starbase' reset_trigger={reset_trigger}></ShipSelect>
+            {Globals.shipTypes.map((shipType) => (
+              <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_defender} setup_trigger={setdefender_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>
+            ))}
             </Box>
           </Stack>
         </Grid>
         <Grid item> {/* Run Battle */}
-          <ResponsiveAppBar>Run Battle</ResponsiveAppBar>
-          <BattleSim data_attacker={data_attacker} data_defender={data_defender} begin_battle_trigger_fcn={begin_battle_trigger_fcn}></BattleSim>
+        <ResponsiveAppBar reset_default={reset_default}></ResponsiveAppBar>
+          <BattleSim attacker_setup={attacker_setup} defender_setup={defender_setup} 
+          data_attacker={data_attacker}
+          data_defender={data_defender}
+          begin_battle_trigger_fcn={begin_battle_trigger_fcn}></BattleSim>
         </Grid>
       </Grid>
     </div>
