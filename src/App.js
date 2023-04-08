@@ -12,18 +12,17 @@ import BattleSim from './components/battle_sim';
 
 function App() {
   const [reset_trigger, setreset_trigger] = React.useState(0);
+  const [begin_battle_trigger, setbegin_battle_trigger] = React.useState(0);
+  const [data_attacker, setdata_attacker] = React.useState({});
+  const [data_defender, setdata_defender] = React.useState({});
 
   const reset_default = () => {
     console.log("App: Reset Default")
     setreset_trigger(reset_trigger + 1);
   }
-
-  const load_battle_state= (players) => {
-    // Load Attacker
-
-    // Load Defender
-
-    // nb_initiative += 0.5; // half point bump to defender so they win ties
+  const begin_battle_trigger_fcn = () => {
+    console.log("App: Begin Battle Trigger")
+    setbegin_battle_trigger(begin_battle_trigger + 1);
   }
 
   return (
@@ -34,7 +33,7 @@ function App() {
           <Stack direction="row" spacing={2}>
             <Box sx={{width: 900}}> {/* Attacker setup */}
               <h1>Attacker Setup</h1>
-              <h2>Interceptors</h2> <ShipSelect shipType='interceptor' reset_trigger={reset_trigger}></ShipSelect>
+              <h2>Interceptors</h2> <ShipSelect shipType='interceptor' reset_trigger={reset_trigger} data={data_attacker} setdata={setdata_attacker} begin_battle_trigger={begin_battle_trigger}></ShipSelect>
               <h2>Cruisers</h2> <ShipSelect shipType='cruiser' reset_trigger={reset_trigger}></ShipSelect>
               <h2>Dreadnoughts</h2> <ShipSelect shipType='dreadnought' reset_trigger={reset_trigger}></ShipSelect>
               <h2>Starbases</h2> <ShipSelect shipType='starbase' reset_trigger={reset_trigger}></ShipSelect>
@@ -50,7 +49,7 @@ function App() {
         </Grid>
         <Grid item> {/* Run Battle */}
           <ResponsiveAppBar>Run Battle</ResponsiveAppBar>
-          <BattleSim load_battle_state={load_battle_state}></BattleSim>
+          <BattleSim data_attacker={data_attacker} data_defender={data_defender} begin_battle_trigger_fcn={begin_battle_trigger_fcn}></BattleSim>
         </Grid>
       </Grid>
     </div>

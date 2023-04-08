@@ -10,6 +10,7 @@ import Divider from '@mui/material/Divider';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import RadioAttackRetreat from './radio';
+import Confirm_modal from './confirm_modal';
 
 const ORDER_PLAYER = 0
 const ORDER_SHIP = 1
@@ -42,6 +43,19 @@ class Ship{
     this.retreating = false;
     this.retreated = false;
   }
+  set_battle_stats(data, playerType){
+    this.nb_ships = data.nb_ships;
+    this.nb_shields = data.nb_shields;
+    this.nb_computers = data.nb_computers;
+    this.nb_yellow = data.nb_yellow;
+    this.nb_orange = data.nb_orange;
+    this.nb_red = data.nb_red;
+    this.nb_yellow_missiles = data.nb_yellow_missiles;
+    this.nb_orange_missiles = data.nb_orange_missiles;
+    this.nb_hull = data.nb_hull;
+    this.nb_initiative = data.nb_initiative;
+    if (playerType == "Defender"){this.nb_initiative += 0.5} // Defender advantage
+  }
 }
 
 class Player{
@@ -52,6 +66,10 @@ class Player{
     this.ships = Object.fromEntries( shipTypes.map((shipType, idx) => ([shipType, new Ship(shipType)])) ) // make object
     console.log(this.ships)
   }
+  set_battle_stats(data){
+    Object.keys(data).forEach((shipType) => (
+      this.ships[shipType].set_battle_stats(data[shipType], this.playerType)
+    ))}
 }
 
 var dice = {
@@ -67,10 +85,18 @@ export default function BattleSim(props) {
   const [playerType, setplayerType] = React.useState('Attacker')
   const [order, setorder] = React.useState([])
   const [order_id, setorder_id] = React.useState(0)
+  const [attacker_updated, setattacker_updated] = React.useState(false)
+  const [defender_updated, setdefender_updated] = React.useState(false)
+  const [battle_ready, setbattle_ready] = React.useState(false)
 
   var players = {'Attacker': new Player('Attacker'), 'Defender': new Player('Defender')};
   
   // Use the same interface as https://s3.amazonaws.com/eclipse-calculator/eclipse-calculator.htm to setup attacker and defender armies
+
+  const add_to_log = (new_log) => {
+    log.push(new_log)
+    setlog(log)
+  }
 
   const calc_battle_order = () => {
     // determine battle order
@@ -92,9 +118,43 @@ export default function BattleSim(props) {
   }
 
   const begin_battle = () => {
-    // load battle state from parent
-    props.load_battle_state(players);
-    calc_battle_order()
+    // trigger battle
+    props.begin_battle_trigger_fcn();
+  }
+
+  React.useEffect(() => {
+    if (attacker_updated & defender_updated) {
+      calc_battle_order()
+      add_to_log("Battle Order Calculated.")
+      setbattle_ready(true)
+      }
+  }, [attacker_updated, defender_updated]);
+
+  React.useEffect(() => {
+    if (props.data_defender) {
+      // Load Attacker
+      players['Defender'].set_battle_stats(props.data_defender)
+      console.log(props.data_defender)
+      add_to_log("Defender Stats Successfully loaded.")
+      setdefender_updated(true);
+      }
+  }, [props.data_attacker]);
+
+  React.useEffect(() => {
+    if (props.data_attacker) {
+      // Load Attacker
+      players['Attacker'].set_battle_stats(props.data_attacker)
+      console.log(props.data_attacker)
+      add_to_log("Attacker Stats Successfully loaded.")
+      setattacker_updated(true);
+      }
+  }, [props.data_attacker]);
+
+  // reset battle
+  const reset_battle = () => {
+    setattacker_updated(false)
+    setdefender_updated(false)
+    setbattle_ready(false)
   }
 
   // hit determiner
@@ -125,6 +185,11 @@ export default function BattleSim(props) {
   
   // Battle code
   const step_engagement_round = () => {
+    if (! battle_ready){
+      console.log("Wait for setup to complete")
+      add_to_log("Wait for setup to complete")
+      return;
+    }
     let shipType = order[order_id][1]
     let player = players[playerType]
     let ship = player.ships[shipType]
@@ -151,8 +216,7 @@ export default function BattleSim(props) {
       if (ship.retreating){ // Retreat
         // succesfully retreated
         ship.retreated = true;
-        log.push(`${ship.nb_ships} ${ship.shipType}\'s have succesfully escaped`)
-        setlog(log)
+        add_to_log(`${ship.nb_ships} ${ship.shipType}'s have succesfully escaped`)
       }
       else{ // Roll cannons
         Array(ship.nb_yellow).forEach(() => {
@@ -220,6 +284,7 @@ export default function BattleSim(props) {
       <Stack justifyContent="space-evenly" sx={{margin:'10px', height: 500, width: 400}}> 
           <Button variant="contained" size="large" onClick={begin_battle}>Begin Battle</Button>
           <Button variant="contained" size="large" onClick={step_engagement_round}>Roll</Button>
+          <Confirm_modal></Confirm_modal>
           <Paper>
             <List sx={{height:300}}>
             {log.map((entry) => (

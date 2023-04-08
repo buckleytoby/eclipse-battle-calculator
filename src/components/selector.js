@@ -101,6 +101,26 @@ export function ShipSelect(props) {
     }
   }, [props.reset_trigger, props.shipType]);
 
+  React.useEffect(() => {
+    if (props.begin_battle_trigger) {
+      let data = props.data
+      data[props.shipType] = {
+        'nb_ships': nb_ships,
+        'nb_shields': nb_shields,
+        'nb_computers': nb_computers,
+        'nb_yellow': nb_yellow,
+        'nb_orange': nb_orange,
+        'nb_red': nb_red,
+        'nb_yellow_missiles': nb_yellow_missiles,
+        'nb_orange_missiles': nb_orange_missiles,
+        'nb_hull': nb_hull,
+        'nb_initiative': nb_initiative,
+      }
+      // use the setter
+      props.setdata(data)
+    }
+  }, [props.begin_battle_trigger]);
+
   return (
     <Box>
       <Box
