@@ -35,13 +35,13 @@ function App() {
         <Grid item> {/* Battle setup */}
           <ResponsiveAppBar reset_default={reset_default}></ResponsiveAppBar>
           <Stack direction="row" spacing={2}>
-            <Box sx={{width: 900}}> {/* Attacker setup */}
+            <Box sx={{marginX: "50px", width: 650}}> {/* Attacker setup */}
               <h1>Attacker Setup</h1>
             {Globals.shipTypes.map((shipType) => (
               <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_attacker} setup_trigger={setattacker_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>
             ))}
             </Box>
-            <Box sx={{width: 900}}> {/* Defender setup */}
+            <Box sx={{marginX: "50px", width: 650}}> {/* Defender setup */}
               <h1>Defender Setup</h1>
             {Globals.shipTypes.map((shipType) => (
               <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_defender} setup_trigger={setdefender_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>

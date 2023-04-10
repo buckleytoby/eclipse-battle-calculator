@@ -29,6 +29,7 @@ const defaults = {
     nb_computers: 0,
     nb_yellow: 1,
     nb_orange: 0,
+    nb_blue: 0,
     nb_red: 0,
     nb_yellow_missiles: 0,
     nb_orange_missiles: 0,
@@ -41,6 +42,7 @@ const defaults = {
     nb_computers: 1,
     nb_yellow: 1,
     nb_orange: 0,
+    nb_blue: 0,
     nb_red: 0,
     nb_yellow_missiles: 0,
     nb_orange_missiles: 0,
@@ -53,6 +55,7 @@ const defaults = {
     nb_computers: 1,
     nb_yellow: 2,
     nb_orange: 0,
+    nb_blue: 0,
     nb_red: 0,
     nb_yellow_missiles: 0,
     nb_orange_missiles: 0,
@@ -65,6 +68,7 @@ const defaults = {
     nb_computers: 1,
     nb_yellow: 1,
     nb_orange: 0,
+    nb_blue: 0,
     nb_red: 0,
     nb_yellow_missiles: 0,
     nb_orange_missiles: 0,
@@ -73,34 +77,52 @@ const defaults = {
   }
 }
 
+function Selector(props){
+
+  return(
+  <FormControl fullWidth sx={{width:100, p:1}}>
+    <InputLabel id={props.label}>{props.labelname}</InputLabel>
+    <Select
+      labelId={props.label}
+      id={props.label + "_selector"}
+      defaultValue={props.value}
+      value={props.value}
+      label={props.labelname}
+      onChange={props.callback}
+    >
+      {[...Array(6)].map((e, i) => <MenuItem key={i} value={i}>{i}</MenuItem>)}
+    </Select>
+  </FormControl>
+)}
+
 export function ShipSelect(props) {
-  const [nb_ships, setnbShips] = React.useState('');
-  const [nb_shields, setshields] = React.useState('');
-  const [nb_computers, setComputers] = React.useState('');
-  const [nb_yellow, setnb_yellow] = React.useState('');
-  const [nb_orange, setnb_orange] = React.useState('');
-  const [nb_red, setnb_red] = React.useState('');
-  const [nb_yellow_missiles, setnb_yellow_missiles] = React.useState('');
-  const [nb_orange_missiles, setnb_orange_missiles] = React.useState('');
-  const [nb_hull, setnb_hull] = React.useState('');
-  const [nb_initiative, setnb_initiative] = React.useState('');  
+  const [nb_ships, setnb_ships] = React.useState(0);
+  const [nb_shields, setnb_shields] = React.useState(0);
+  const [nb_computers, setnb_computers] = React.useState(0);
+  const [nb_yellow, setnb_yellow] = React.useState(0);
+  const [nb_orange, setnb_orange] = React.useState(0);
+  const [nb_blue, setnb_blue] = React.useState(0);
+  const [nb_red, setnb_red] = React.useState(0);
+  const [nb_yellow_missiles, setnb_yellow_missiles] = React.useState(0);
+  const [nb_orange_missiles, setnb_orange_missiles] = React.useState(0);
+  const [nb_hull, setnb_hull] = React.useState(0);
+  const [nb_initiative, setnb_initiative] = React.useState(0);  
   
   // hook for resetting to defaults for parent to use
   React.useEffect(() => {
-    if (props.reset_trigger) {
-      console.log('Resetting to Default');
-      setnbShips(defaults[props.shipType].nb_ships);
-      setshields(defaults[props.shipType].nb_shields);
-      setComputers(defaults[props.shipType].nb_computers);
-      setnb_yellow(defaults[props.shipType].nb_yellow);
-      setnb_orange(defaults[props.shipType].nb_orange);
-      setnb_red(defaults[props.shipType].nb_red);
-      setnb_yellow_missiles(defaults[props.shipType].nb_yellow_missiles);
-      setnb_orange_missiles(defaults[props.shipType].nb_orange_missiles);
-      setnb_hull(defaults[props.shipType].nb_hull);
-      setnb_initiative(defaults[props.shipType].nb_initiative);
-    }
-  }, [props.reset_trigger, props.shipType]);
+    console.log('Resetting to Default');
+    setnb_ships(defaults[props.shipType].nb_ships);
+    setnb_shields(defaults[props.shipType].nb_shields);
+    setnb_computers(defaults[props.shipType].nb_computers);
+    setnb_yellow(defaults[props.shipType].nb_yellow);
+    setnb_orange(defaults[props.shipType].nb_orange);
+    setnb_blue(defaults[props.shipType].nb_blue);
+    setnb_red(defaults[props.shipType].nb_red);
+    setnb_yellow_missiles(defaults[props.shipType].nb_yellow_missiles);
+    setnb_orange_missiles(defaults[props.shipType].nb_orange_missiles);
+    setnb_hull(defaults[props.shipType].nb_hull);
+    setnb_initiative(defaults[props.shipType].nb_initiative);
+  }, [props.reset_trigger]);
 
   React.useEffect(() => {
     if (props.begin_battle_trigger) {
@@ -111,6 +133,7 @@ export function ShipSelect(props) {
         'nb_computers': nb_computers,
         'nb_yellow': nb_yellow,
         'nb_orange': nb_orange,
+        'nb_blue': nb_blue,
         'nb_red': nb_red,
         'nb_yellow_missiles': nb_yellow_missiles,
         'nb_orange_missiles': nb_orange_missiles,
@@ -123,180 +146,26 @@ export function ShipSelect(props) {
   }, [props.begin_battle_trigger]);
 
   return (
-    <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          borderRadius: 2,
-          margin:'10px',
-          width: 350,
-        }}
-      >        
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Nb Ships */}
-        <InputLabel id="nb_ships"># of Ships</InputLabel>
-        <Select
-          labelId="nb_ships"
-          id="ships_select"
-          defaultValue={nb_ships}
-          value={nb_ships}
-          label="# of Ships"
-          onChange={(event) => {setnbShips(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Shields */}
-        <InputLabel id="shields">Shields</InputLabel>
-        <Select
-          labelId="shields"
-          id="shields_select"
-          value={nb_shields}
-          label="Shields"
-          onChange={(event) => {setshields(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Computers */}
-        <InputLabel id="Computers">Computers</InputLabel>
-        <Select
-          labelId="Computers"
-          id="Computers_select"
-          value={nb_computers}
-          label="Computers"
-          onChange={(event) => {setComputers(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Hulls */}
-        <InputLabel id="Hulls">Hulls</InputLabel>
-        <Select
-          labelId="Hulls"
-          id="Hulls_select"
-          value={nb_hull}
-          label="Hulls"
-          onChange={(event) => {setnb_hull(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Initiative */}
-        <InputLabel id="Initiative">Initiative</InputLabel>
-        <Select
-          labelId="Initiative"
-          id="Initiative_select"
-          value={nb_initiative}
-          label="Initiative"
-          onChange={(event) => {setnb_initiative(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
+    <Box m="auto">
+      <Box m="auto" sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems:'center', padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+        <Selector labelname="# of Ships" label="nb_ships" value={nb_ships} callback={(event) => {setnb_ships(event.target.value)}} />
+        <Selector labelname="Shields" label="nb_shields" value={nb_shields} callback={(event) => {setnb_shields(event.target.value)}} />
+        <Selector labelname="Computers" label="nb_computers" value={nb_computers} callback={(event) => {setnb_computers(event.target.value)}} />
+        <Selector labelname="Hulls" label="nb_hull" value={nb_hull} callback={(event) => {setnb_hull(event.target.value)}} />
+        <Selector labelname="Iniative" label="nb_initiative" value={nb_initiative} callback={(event) => {setnb_initiative(event.target.value)}} />
       </Box>
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          borderRadius: 2,
-          margin:'10px',
-          width: 350,
-        }}
-      >
-        <Box sx={{}}>Cannons</Box>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Yellow */}
-        <InputLabel id="yellow_die"># Yellow</InputLabel>
-        <Select
-          labelId="yellow_die"
-          id="yellow_die_select"
-          value={nb_yellow}
-          label="# Yellow Die"
-          onChange={(event) => {setnb_yellow(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Orange Cannons */}
-        <InputLabel id="oj_die"># Orange</InputLabel>
-        <Select
-          labelId="oj_die"
-          id="oj_die_select"
-          value={nb_orange}
-          label="# Orange Die"
-          onChange={(event) => {setnb_orange(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Red Cannons */}
-        <InputLabel id="red_die"># Red</InputLabel>
-        <Select
-          labelId="red_die"
-          id="red_die_select"
-          value={nb_red}
-          label="# Red Die"
-          onChange={(event) => {setnb_red(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
+      <Box m="auto" sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems:'center', padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+        <h5>Cannons</h5>
+        <Selector labelname="Yellow" label="nb_yellow" value={nb_yellow} callback={(event) => {setnb_yellow(event.target.value)}} />
+        <Selector labelname="Orange" label="nb_orange" value={nb_orange} callback={(event) => {setnb_orange(event.target.value)}} />
+        <Selector labelname="Blue" label="nb_blue" value={nb_blue} callback={(event) => {setnb_blue(event.target.value)}} />
+        <Selector labelname="Red" label="nb_red" value={nb_red} callback={(event) => {setnb_red(event.target.value)}} />
       </Box>
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          borderRadius: 2,
-          margin:'10px',
-          width: 250,
-        }}
-      >
-        <Box sx={{}}>Missiles</Box>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Yellow Missiles*/}
-        <InputLabel id="yellow_missiles"># Yellow</InputLabel>
-        <Select
-          labelId="yellow_missiles"
-          id="yellow_missiles_select"
-          value={nb_yellow_missiles}
-          label="# Yellow Missiles"
-          onChange={(event) => {setnb_yellow_missiles(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      <FormControl fullWidth sx={{width:100, p:1}}> {/* Orange Missiles */}
-        <InputLabel id="oj_missiles"># Orange</InputLabel>
-        <Select
-          labelId="oj_missiles"
-          id="oj_missiles_select"
-          value={nb_orange_missiles}
-          label="# Orange Missiles"
-          onChange={(event) => {setnb_orange_missiles(event.target.value)}}
-        >
-          {[...Array(6)].map((e, i) => <MenuItem key="{i}" value={i}>{i}</MenuItem>)}
-        </Select>
-      </FormControl>
+      <Box m="auto" sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems:'center', padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+        <h5>Missiles</h5>
+        <Selector labelname="Yellow" label="nb_yellow_missiles" value={nb_yellow_missiles} callback={(event) => {setnb_yellow_missiles(event.target.value)}} />
+        <Selector labelname="Orange" label="nb_orange_missiles" value={nb_orange_missiles} callback={(event) => {setnb_orange_missiles(event.target.value)}} />
       </Box>
-
-
     </Box>
   );
 }

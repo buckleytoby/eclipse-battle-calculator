@@ -5,12 +5,14 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 
-export default function RadioAttackRetreat() {
+export default function RadioAttackRetreat(props) {
   return (
     <FormControl>
       <RadioGroup
         aria-labelledby="demo-radio-buttons-group-label"
-        defaultValue="female"
+        defaultValue="attack"
+        value={props.value}
+        onChange={props.onChange}
         name="radio-buttons-group"
       >
         <FormControlLabel value="attack" control={<Radio />} label="Attack" />
