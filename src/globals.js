@@ -10,4 +10,4 @@ export const damages = {'yellow_missiles': 1,
                  'blue_cannon': 3,
                  'red_cannon': 4,
 }
-export const TEST = false;
+export const TEST = true;

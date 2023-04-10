@@ -14,12 +14,15 @@ import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 
+var ship_id = 0
+
 class Ship{
   constructor (shipType, nb_hull, nb_shields){
     this.shipType = shipType
     this.nb_hull = nb_hull
     this.nb_shields = nb_shields
     this.damage_taken = 0
+    this.id = ship_id; ship_id += 1
     // bind functions
     this.is_dead = this.is_dead.bind(this);
   }
@@ -68,16 +71,16 @@ class Ships{
     this.nb_orange_missiles = data.nb_orange_missiles;
     this.nb_hull = data.nb_hull;
     this.nb_initiative = data.nb_initiative;
-    if (playerType == "Defender"){this.nb_initiative += 0.5} // Defender advantage
+    if (playerType === "Defender"){this.nb_initiative += 0.5} // Defender advantage
     if (this.nb_yellow_missiles > 0 | this.nb_orange_missiles > 0){this.b_has_missiles = true}
     this.make_active_ships()
   }
   set_retreat_attack = (event) => {
     this.RadioAttackRetreatValue = event.target.value;
-    if (this.RadioAttackRetreatValue == "retreat"){
+    if (this.RadioAttackRetreatValue === "retreat"){
       this.wants_to_retreat = true
     }
-    else if(this.RadioAttackRetreatValue == "attack"){
+    else if(this.RadioAttackRetreatValue === "attack"){
       this.wants_to_retreat = false
     }
   }
@@ -176,13 +179,13 @@ export default function BattleSim(props) {
     ls.sort((a, b) => {return b[2] - a[2]}) // query the initiative 
     ls_missile.sort((a, b) => {return b[2] - a[2]}) // query the initiative 
     // check for no ships
-    if (ls.length == 0 & ls_missile.length == 0){
+    if (ls.length === 0 & ls_missile.length === 0){
       add_to_log("There are no ships in this battle.")
       return false;
     } // set order state, reset the order_id, reset player to first
     if (ls.length  > 0) {setorder(ls); setorder_id(0); setplayerType(ls[0][Globals.ORDER_PLAYER])}
     // check if skip missile round
-    if (ls_missile.length == 0){
+    if (ls_missile.length === 0){
       setb_missile_round(false);
     } else{setmissile_order(ls_missile); setmissile_id(0); setplayerType(ls_missile[0][Globals.ORDER_PLAYER])}
     
@@ -255,9 +258,9 @@ export default function BattleSim(props) {
   const calc_hit_roll = (computers) => {
     var result = dice.roll()
     // auto miss if one
-    if (result == 1){return 0}
+    if (result === 1){return 0}
     // auto hit if 6
-    if (result == 6){return 99}
+    if (result === 6){return 99}
     // else, add computer
     return result;
   }
@@ -278,7 +281,7 @@ export default function BattleSim(props) {
       if (new_id >= missile_order.length){
         setb_missile_round(false);
         // special case: some missiles and no cannons: attacker is forced to retreat...
-        if (order.length == 0){
+        if (order.length === 0){
           setb_battle_over(true)
           add_to_log("No ships have cannons. Attacker is forced to retreat. Battle over.")
         }
@@ -305,9 +308,6 @@ export default function BattleSim(props) {
   
   // Battle code
   const step_engagement_round = () => {
-    if (Globals.TEST){
-      sethits_open(true); // test the modal
-    }
     if (! battle_ready){
       console.log("Wait for setup to complete")
       add_to_log("Wait for setup to complete")
@@ -361,7 +361,7 @@ export default function BattleSim(props) {
         sethits(hits)
         sethits_open(true)
       }
-    }
+    } else{ add_to_log("No hits.")}
     // Increment the order #
     increment_order()
     
@@ -399,17 +399,17 @@ export default function BattleSim(props) {
           <Paper style={{maxHeight: 200, overflow: 'auto'}}>
             <List sx={{height:300}}>
             {log.map((entry) => (
-              <Box>
-              <ListItem>
-                <ListItemText primary={entry} />
+              <Box key={`box_${entry}`}>
+              <ListItem key={entry}>
+                <ListItemText key={`list_item_${entry}`} primary={entry} />
               </ListItem>
-              <Divider />
+              <Divider key="divider"/>
               </Box>
             ))}
             {/* dummy div to scroll to bottom of list */}
             <div style={{ float:"left", clear: "both" }}
-             ref={(el) => { scrollbar_ref.current = el; }}>
-            </div>
+             ref={(el) => { scrollbar_ref.current = el; }}
+              key="dummy_div" />
             </List>
           </Paper>
       </Stack>
