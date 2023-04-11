@@ -78,8 +78,7 @@ const defaults = {
 }
 
 if (Globals.TEST){
-  defaults.Starbase.nb_ships = 3
-  defaults.Starbase.nb_yellow = 4
+  defaults.Interceptor.nb_ships = 1
 }
 
 function Selector(props){

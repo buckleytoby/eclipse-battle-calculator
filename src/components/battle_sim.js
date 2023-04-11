@@ -14,7 +14,12 @@ import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 
+const OtherPlayer = (playerType) => {
+  return playerType === Globals.playerType[0] ? Globals.playerType[1] : Globals.playerType[0]
+}
+
 var ship_id = 0
+var ship_dct = {}
 
 class Ship{
   constructor (shipType, nb_hull, nb_shields){
@@ -25,14 +30,23 @@ class Ship{
     this.id = ship_id; ship_id += 1
     // bind functions
     this.is_dead = this.is_dead.bind(this);
+    this.receive_damage = this.receive_damage.bind(this);
+    ship_dct[this.id] = this;
   }
-  is_dead(){
+  is_dead = () => {
     // if # of hulls + 1 base hp <= amount of damage taken
     return (this.nb_hull + 1) <= this.damage_taken
   }
+  receive_damage = (dmg) => {
+    this.damage_taken += dmg
+    // cleanup
+    if (this.is_dead()) {
+      // delete ship_dct[this.id]
+    }
+  }
 }
 
-class Ships{
+class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, etc.) TODO: rename to ShipBlueprint
   constructor (shipType) {
     this.shipType = shipType;
     this.b_has_missiles = false;
@@ -58,6 +72,7 @@ class Ships{
     this.set_retreat_attack = this.set_retreat_attack.bind(this);
     this.make_active_ships = this.make_active_ships.bind(this);
     this.get_active_ships = this.get_active_ships.bind(this);
+    this.get_nb_active_ships = this.get_nb_active_ships.bind(this);
   }
   set_battle_stats = (data, playerType) => {
     this.nb_ships = data.nb_ships;
@@ -86,14 +101,28 @@ class Ships{
   }
   make_active_ships = () => {
   // make enumeration of all active ships
+  console.log("Making active Ships")
   var activeShips = [];
   [...Array(this.nb_ships)].forEach((_) => (
     activeShips.push(new Ship(this.shipType, this.nb_hull, this.nb_shields))
   ))
   this.active_ships = activeShips
   }
+  update_active_ships = () => {
+    // dead ships aren't active ships
+    Object.keys(this.active_ships).forEach ((key) => {
+      if (this.active_ships[key].is_dead()){
+        console.log("Deleting ship: ", key)
+        this.active_ships.splice(key, 1)
+      }
+    })
+    console.log(this.active_ships)
+  }
   get_active_ships = () => {
     return this.active_ships
+  }
+  get_nb_active_ships = () => {
+    return Object.keys(this.active_ships).length
   }
 }
 
@@ -102,10 +131,11 @@ class Player{
     this.playerType = playerType;
     this.auto_damage_on = false;
     // ships is an object (i.e. key-value pairs)
-    this.ships = Object.fromEntries( Globals.shipTypes.map((shipType, idx) => ([shipType, new Ships(shipType)])) )
+    this.ships = Object.fromEntries( Globals.shipTypes.map((shipType, idx) => ([shipType, new ShipBlueprint(shipType)])) )
     this.set_battle_stats = this.set_battle_stats.bind(this);
     this.get_active_ships = this.get_active_ships.bind(this);
     this.is_active = this.is_active.bind(this);
+    this.print_active_ships = this.print_active_ships.bind(this);
   }
   set_battle_stats = (data) => {
     Object.keys(data).forEach((shipType) => {
@@ -118,10 +148,22 @@ class Player{
     })
     return active_ships
   }
+  get_nb_active_ships = () => {
+    var nb_active_ships = 0
+    nb_active_ships = Object.keys(this.ships).reduce((accumulator, key) => (
+      accumulator + this.ships[key].get_nb_active_ships()
+    ), nb_active_ships)
+    return nb_active_ships
+
+  }
   is_active = () => {
     // single line if-else
     var out = this.get_active_ships().length > 0 ? true : false
     return out
+  }
+  print_active_ships = () => {
+    var active_ships = this.get_active_ships()
+    return active_ships.map((ship) => (`1 ${ship.shipType}`))
   }
 }
 
@@ -147,18 +189,38 @@ export default function BattleSim(props) {
   const [hits_open, sethits_open] = React.useState(false)
   const [hits, sethits] = React.useState([])
   const [b_battle_over, setb_battle_over] = React.useState(false)
+  const [increment_order_trigger, setincrement_order_trigger] = React.useState(0)
 
   const players = React.useRef({'Attacker': new Player('Attacker'), 'Defender': new Player('Defender')})
   const scrollbar_ref = React.useRef()
+
+  const did_inactive_player_lose = () => {
+    return players.current[OtherPlayer(playerType)].get_nb_active_ships() === 0 ? true : false
+  }
   
   // Use the same interface as https://s3.amazonaws.com/eclipse-calculator/eclipse-calculator.htm to setup attacker and defender armies
+  const dmg_ship = (ship_id, dmg) => {
+    if (ship_id in ship_dct){
+      console.log(`Hit ${ship_dct[ship_id].shipType} with ${dmg} damage!`)
+      ship_dct[ship_id].receive_damage(dmg)
+      // update ships
+      players.current[OtherPlayer(playerType)].ships[ship_dct[ship_id].shipType].update_active_ships()
+    } else {console.log("something went wrong...", ship_dct)}
+  }
+
+  const sethits_cb = (new_hits) => {
+    sethits(new_hits)
+    // recompute active ships in case any died
+  }
 
   const add_to_log = (new_log) => {
     log.push(new_log)
     setlog(log)
+  }
+  React.useEffect(() => {
     // scroll to bottom
     scrollbar_ref.current.scrollIntoView({ behavior: "smooth" })
-  }
+  }, [log.length])
 
   const calc_battle_order = () => {
     // determine battle order
@@ -214,6 +276,7 @@ export default function BattleSim(props) {
         add_to_log("Defender has no ships. Attacker automatically wins")
         return
       }
+      console.log("ship dct", ship_dct)
       // calculate battle order
       var b_battle_ready = calc_battle_order()
       // TODO: grey out divs which aren't active
@@ -241,15 +304,38 @@ export default function BattleSim(props) {
       }
   }, [props.attacker_setup]);
 
+  React.useEffect(() => {
+    // Check if battle over
+    if (battle_ready & players.current[OtherPlayer(playerType)].get_nb_active_ships() === 0) {
+      // Inactive player has no ships left, battle is over
+      setb_battle_over(true)
+      }
+  }, [hits.length]);
+
+  React.useEffect(() => {
+    if (increment_order_trigger > 0) {
+      // Increment the order #
+      increment_order()
+      }
+  }, [increment_order_trigger]);
+
   // reset battle
   const reset_battle = () => {
     setattacker_updated(false)
     setdefender_updated(false)
     setbattle_ready(false)
+    sethits_open(false)
+    setb_missile_round(true)
+    setb_battle_over(false)
+    setincrement_order_trigger(0)
+    ship_dct = {} // reset globals
+    ship_id = 0
   }
 
   React.useEffect(() => {
-    if (b_battle_over){
+    if (b_battle_over & battle_ready){
+      add_to_log(`Battle Over! ${playerType} won with these ships remaining: `)
+      players.current[playerType].print_active_ships().forEach((str1) => {add_to_log(str1)})
       reset_battle()
     }
   }, [b_battle_over])
@@ -265,11 +351,11 @@ export default function BattleSim(props) {
     return result;
   }
   // get ship hits
-  const get_hits = (hits, ship, nb_die, dmgType) => {
+  const get_hits = (hits, nb_computers, nb_die, dmgType) => {
     [...Array(nb_die)].forEach(() => {
-      var result = calc_hit_roll(ship.nb_computers)
-      if (result + ship.nb_computers >= 6){
-        hits.push( [result, result + ship.nb_computers, Globals.damages[dmgType]] )
+      var result = calc_hit_roll(nb_computers)
+      if (result + nb_computers >= 6){
+        hits.push( [result, result + nb_computers, Globals.damages[dmgType]] )
       }
     })
   }
@@ -289,20 +375,28 @@ export default function BattleSim(props) {
       else{
         setmissile_id(new_id);
         setplayerType(missile_order[new_id][Globals.ORDER_PLAYER])
-        // extract the ship
-        var retreated = players.current[playerType].ships[order[new_order_id][Globals.ORDER_SHIP]].retreated
       }
     }
     else{
+      var count = 0
+      var player = undefined
+      var new_order_id = order_id
+      var ship_blueprint = undefined
+      var retreated = false
       do {
-        var new_order_id = (order_id + 1) % order.length
-        setorder_id(new_order_id);
-        setplayerType(order[new_order_id][Globals.ORDER_PLAYER])
-        // extract the ship
-        var player = players.current[playerType]
-        var ship = player.ships[order[new_order_id][Globals.ORDER_SHIP]]
-        var retreated = players.current[playerType].ships[order[new_order_id][Globals.ORDER_SHIP]].retreated
-      } while (retreated); // skip to next ship if this one has retreated
+        new_order_id = (order_id + 1) % order.length
+        player = players.current[order[new_order_id][Globals.ORDER_PLAYER]]
+        ship_blueprint = player.ships[order[new_order_id][Globals.ORDER_SHIP]]
+        retreated = players.current[playerType].ships[order[new_order_id][Globals.ORDER_SHIP]].retreated
+        count += 1
+      } while (retreated & ship_blueprint.get_nb_active_ships() === 0 & count <= order.length); // skip to next ship if this one has retreated, protection against infinite loops
+      if (count > order.length){
+        console.log('something went wrong...')
+        console.log(player)
+      }
+      add_to_log(`${order[new_order_id][Globals.ORDER_PLAYER]} is attacking.`)
+      setorder_id(new_order_id);
+      setplayerType(order[new_order_id][Globals.ORDER_PLAYER])
     }
   }
   
@@ -315,38 +409,43 @@ export default function BattleSim(props) {
     }
     let shipType = order[order_id][1]
     let player = players.current[playerType]
-    let ship = player.ships[shipType]
+    let ship_blueprint = player.ships[shipType]
+    let nb_active_ships = ship_blueprint.get_nb_active_ships()
     let hits = []
     let result = 0;
-    // 
-    add_to_log(`${playerType} is attacking with ${ship.nb_ships} ${shipType}'s`)
-    console.log(ship)
+    //
+    if (nb_active_ships === 0){
+      console.log("something went wrong...")
+      add_to_log(`${playerType} has no ships of type ${shipType}... skipping`)
+      setincrement_order_trigger(increment_order_trigger + 1)
+      return
+    }
     // Missiles
     if (b_missile_round) {
       // roll for missiles
-      get_hits(hits, ship, ship.nb_yellow_missiles, "yellow_missiles")
-      get_hits(hits, ship, ship.nb_orange_missiles, "orange_missiles")
+      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow_missiles, "yellow_missiles")
+      get_hits(hits, ship_blueprint, ship_blueprint.nb_orange_missiles, "orange_missiles")
       // set missile status to none
-      ship.b_has_missiles = false
+      ship_blueprint.b_has_missiles = false
     }
     else{ // Loop engagement rounds
-      if (ship.wants_to_retreat){ // Begin retreating
-        ship.retreating = true;
+      if (ship_blueprint.wants_to_retreat){ // Begin retreating
+        ship_blueprint.retreating = true;
       }
-      else if (ship.retreating){ // Retreat
+      else if (ship_blueprint.retreating){ // Retreat
         // succesfully retreated
-        ship.retreated = true;
-        add_to_log(`${ship.nb_ships} ${ship.shipType}'s have succesfully escaped`)
+        ship_blueprint.retreated = true;
+        add_to_log(`${nb_active_ships} ${ship_blueprint.shipType}'s have succesfully escaped`)
       }
       else{ // Roll cannons
-        get_hits(hits, ship, ship.nb_yellow, "yellow_cannon")
-        get_hits(hits, ship, ship.nb_orange, "orange_cannon")
-        get_hits(hits, ship, ship.nb_blue, "blue_cannon")
-        get_hits(hits, ship, ship.nb_red, "red_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow, "yellow_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_orange, "orange_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_blue, "blue_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_red, "red_cannon")
       }
     }
     if (hits.length >0){
-      console.log(hits)
+      console.log("Hits rolled: ", hits)
       add_to_log(`Hit! ${playerType}'s ${shipType}'s hit with ${hits.length} roll(s)`)
         
       // Distribute Damage like the AI
@@ -361,20 +460,18 @@ export default function BattleSim(props) {
         sethits(hits)
         sethits_open(true)
       }
-    } else{ add_to_log("No hits.")}
-    // Increment the order #
-    increment_order()
-    
-    // Check if battle over
-
-
+    } else{ 
+      add_to_log("Miss!")
+      setincrement_order_trigger(increment_order_trigger + 1)
+    }
   }
 
-  var hits_onClose_cb = (event) => {
-    // 
+  var hits_onClose_cb = () => {
     sethits_open(false)
+    // check if battle over
+    if (battle_ready & did_inactive_player_lose()){setb_battle_over(true); return}
+    if (battle_ready){ setincrement_order_trigger(increment_order_trigger + 1)}
   }
-
 
   return(
   <Box sx={{width:1500, height:500}}>
@@ -399,22 +496,21 @@ export default function BattleSim(props) {
           <Paper style={{maxHeight: 200, overflow: 'auto'}}>
             <List sx={{height:300}}>
             {log.map((entry) => (
-              <Box key={`box_${entry}`}>
-              <ListItem key={entry}>
-                <ListItemText key={`list_item_${entry}`} primary={entry} />
+              <Box >
+              <ListItem key={`list_item_${entry}`}>
+                <ListItemText primary={entry} />
               </ListItem>
-              <Divider key="divider"/>
+              <Divider />
               </Box>
             ))}
             {/* dummy div to scroll to bottom of list */}
             <div style={{ float:"left", clear: "both" }}
-             ref={(el) => { scrollbar_ref.current = el; }}
-              key="dummy_div" />
+             ref={(el) => { scrollbar_ref.current = el; }} />
             </List>
           </Paper>
       </Stack>
 
-      <HitsModal active_ships={players.current[playerType].get_active_ships()} open={hits_open} onClose={hits_onClose_cb} active_player={playerType} hits={hits}/>
+      <HitsModal ship_dct={ship_dct} dmg_ship={dmg_ship} inactive_ships={players.current[OtherPlayer(playerType)].get_active_ships()} open={hits_open} setopen={sethits_open} onClose={hits_onClose_cb} active_player={playerType} hits={hits} sethits={sethits}/>
 
 
       {/* Defender Side */}

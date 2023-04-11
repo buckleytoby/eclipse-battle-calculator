@@ -1,3 +1,4 @@
+import * as React from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack'
@@ -7,34 +8,39 @@ import {Typography} from '@mui/material';
 import {Divider} from '@mui/material';
 import explosion from '../assets/explosion_lowres.png'
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Global } from '@emotion/react';
+import { useEffect } from 'react';
+import AreYouSure from './alert';
+
 
 function active_player(props){
   // List each dice, recall: each die must be distributed entirely to one ship
   return(
     <Box sx={{margin:'10px', width: 400}}> 
     {props.hits.map((hit, idx) => (
-      <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-        <Paper>Damage: {hit[2]}</Paper>
-        <Paper>Roll #: {hit[0]}</Paper>
-        <Paper>Computer-Aided Roll: {hit[1]}</Paper>
-        <Droppable droppableId={`droppable_${idx}`}>
-          {provided => (
-            <div 
-                      ref={provided.innerRef} 
-                      {...provided.droppableProps}>
-              <Draggable draggableId={`draggable_${idx}`} index={0}>
-                {provided => (
-                <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps} >
+      <Droppable droppableId={`active_droppable_${idx}`}>
+        {provided => (
+          <div 
+                    ref={provided.innerRef} 
+                    {...provided.droppableProps}>
+            <Draggable draggableId={`${idx}`} dmg={hit[2]} index={0}>
+              {provided => (
+              <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps} >
+                          
+                <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+                  <Paper>Damage: {hit[2]}</Paper>
+                  <Paper>Roll #: {hit[0]}</Paper>
+                  <Paper>Computer-Aided Roll: {hit[1]}</Paper>
                   <img width={25} height={25} src={explosion} alt="explosion" />
-                </div>
-                )}</Draggable>
-              {provided.placeholder}
-            </div>          
-        )}</Droppable>
-      </Stack>
+                </Stack>
+              </div>
+              )}</Draggable>
+            {provided.placeholder}
+          </div>          
+      )}</Droppable>
     ))}
     </Box>
   )
@@ -44,18 +50,18 @@ function inactive_player(props){
   // list of active ships, current damage, and computer
   return(
     <Box sx={{margin:'10px', width: 400}}> 
-    {props.active_ships.map((active_ship) => (
-      <Droppable droppableId={`droppable_${active_ship.id}`}>
+    {props.inactive_ships.map((inactive_ship) => (
+      <Droppable droppableId={`${inactive_ship.id}`}>
         {provided => (
         <div
                     ref={provided.innerRef}
                     {...provided.droppableProps} >
           <Stack 
           direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-            <Paper>{active_ship.shipType}</Paper>
-            <Paper># Hulls: {active_ship.nb_hull}</Paper>
-            <Paper># Shields: {active_ship.nb_shields}</Paper>
-            <Paper>Current Damage: {active_ship.damage_taken}</Paper>
+            <Paper>{inactive_ship.shipType}</Paper>
+            <Paper># Hulls: {inactive_ship.nb_hull}</Paper>
+            <Paper># Shields: {inactive_ship.nb_shields}</Paper>
+            <Paper>Current Damage: {inactive_ship.damage_taken}</Paper>
             {provided.placeholder} 
           </Stack>
         </div>
@@ -66,15 +72,57 @@ function inactive_player(props){
 }
 
 export default function HitsModal(props) { 
+  const [open_alert, setopen_alert] = React.useState(false);
+  var b_areyousure = false;
+
   // https://github.com/atlassian/react-beautiful-dnd/blob/master/docs/guides/responders.md#ondragend-required 
   function onDragEnd(result, provided) {
     if (!result.destination) {
       return;
     }
-    if (result.destination.index === result.source.index) {
+    if (result.destination.droppableId.includes('active')){
+      // dropping on the active side, do nothing
       return;
     }
+    // extract the ship elem
+    var inactive_ship_id = parseInt(result.destination.droppableId)
+    var hit_idx = parseInt(result.draggableId)
+    if (props.hits[hit_idx] != undefined) { // checks for existance
+      var dmg = props.hits[hit_idx][2]
+      var aided_roll = props.hits[hit_idx][1]
+
+      // ensure Computer-Aided roll beats shields
+      if (!(inactive_ship_id in props.ship_dct)){
+        console.log("something went wrong...")
+        console.log(props.ship_dct, inactive_ship_id)
+      }
+
+      if (aided_roll - props.ship_dct[inactive_ship_id].nb_shields >= 6){
+        props.dmg_ship(inactive_ship_id, dmg)
+        // update the hits list
+        props.hits.splice(hit_idx, 1)
+        console.log("New Hits: ", props.hits)
+        props.sethits([...props.hits]) // must be a new array otherwise won't rerender
+      } else {
+        // modal to ensure player wants to waste the shot
+        setopen_alert(true)
+      }
+    } else {
+      console.log("something went wrong...")
+      console.log(props.hits, hit_idx)
+    }
   }
+
+  // effect to auto-close modal when all hits have been attributed
+  var hits_length = props.hits.length
+  var inactive_ships_length = props.inactive_ships.length
+  React.useEffect(() => {
+    if (hits_length === 0 | inactive_ships_length === 0){
+      // close modal
+      props.onClose(false)
+    }
+  }, [hits_length, inactive_ships_length])
+
 return(
   <DragDropContext onDragEnd={onDragEnd}>
   <Modal
@@ -106,6 +154,8 @@ return(
 
       </Stack>
     </Stack>
-  </Modal></DragDropContext>
+  </Modal>
+  <AreYouSure open={open_alert} setOpen={setopen_alert} b_areyousure={b_areyousure}/>
+  </DragDropContext>
   )
 }
