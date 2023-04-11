@@ -28,7 +28,7 @@ export default function AreYouSure(props) {
         aria-describedby="alert-dialog-description"
       >
         <DialogTitle id="alert-dialog-title">
-          {"Due to the opponent's shields, you're about to waste this roll. Are you sure?"}
+          {props.dialog}
         </DialogTitle>
         <DialogActions>
           <Button onClick={handleClose}>No</Button>

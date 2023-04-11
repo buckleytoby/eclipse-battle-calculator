@@ -79,8 +79,7 @@ const defaults = {
 
 if (Globals.TEST){
   defaults.Interceptor.nb_ships = 1
-  defaults.Cruiser.nb_ships = 1
-  defaults.Dreadnought.nb_ships = 1
+  defaults.Interceptor.nb_yellow_missiles = 2
 }
 
 function Selector(props){

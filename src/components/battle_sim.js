@@ -13,6 +13,7 @@ import RadioAttackRetreat from './radio';
 import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
+import AreYouSure from './alert';
 
 const OtherPlayer = (playerType) => {
   return playerType === Globals.playerType[0] ? Globals.playerType[1] : Globals.playerType[0]
@@ -181,8 +182,6 @@ export default function BattleSim(props) {
   const [playerType, setplayerType] = React.useState('Attacker')
   const [order, setorder] = React.useState([])
   const [order_id, setorder_id] = React.useState(-1)
-  const [missile_order, setmissile_order] = React.useState([])
-  const [missile_id, setmissile_id] = React.useState(-1)
   const [b_missile_round, setb_missile_round] = React.useState(true)
   const [attacker_updated, setattacker_updated] = React.useState(false)
   const [defender_updated, setdefender_updated] = React.useState(false)
@@ -191,6 +190,7 @@ export default function BattleSim(props) {
   const [hits, sethits] = React.useState([])
   const [b_battle_over, setb_battle_over] = React.useState(false)
   const [increment_order_trigger, setincrement_order_trigger] = React.useState(0)
+  const [open_alert, setopen_alert] = React.useState(false);
 
   const players = React.useRef({'Attacker': new Player('Attacker'), 'Defender': new Player('Defender')})
   const scrollbar_ref = React.useRef()
@@ -224,39 +224,43 @@ export default function BattleSim(props) {
     scrollbar_ref.current.scrollIntoView({ behavior: "smooth" })
   }, [log.length])
 
-  const calc_battle_order = () => {
+  const calc_battle_order = (is_missile_round) => {
     // determine battle order
     var ls = []
-    var ls_missile = []
     // construct list of [playerType, shipType, initiative]
     // TODO: move this to a class method and concat the lists
     Object.keys(players.current).forEach((playerType) => (
       Globals.shipTypes.forEach((shipType) => {
         let ship = players.current[playerType].ships[shipType]
-        if(ship.nb_ships > 0){
+        if (is_missile_round & ship.nb_ships > 0 & ship.b_has_missiles){
           ls.push([playerType, shipType, ship.nb_initiative])
         }
-        if (ship.nb_ships > 0 & ship.b_has_missiles){
-          ls_missile.push([playerType, shipType, ship.nb_initiative])
+        else if(ship.nb_ships > 0){
+          ls.push([playerType, shipType, ship.nb_initiative])
         }
       })))
     ls.sort((a, b) => {return b[2] - a[2]}) // query the initiative 
-    ls_missile.sort((a, b) => {return b[2] - a[2]}) // query the initiative 
     // check for no ships
-    if (ls.length === 0 & ls_missile.length === 0){
+    if (!is_missile_round & ls.length === 0){
       add_to_log("There are no ships in this battle.")
       return false;
-    } // set order state, reset the order_id, reset player to first
-    if (ls.length  > 0) {setorder(ls)}
+    } 
     // check if skip missile round
-    if (ls_missile.length === 0){
+    if (is_missile_round & ls.length === 0){
       setb_missile_round(false);
-    } else{setmissile_order(ls_missile)}
-    
+      // rerun itself
+      return calc_battle_order(false)
+    }
+    // set order state, reset the order_id, reset player to -1 so we can increment the order
+    if (ls.length  > 0) {setorder(ls); setorder_id(-1)}
     return true;
   }
 
   const begin_battle = () => {
+    if (battle_ready){
+      // warn user that they will reset the ongoing battle
+      setopen_alert(true)
+    }
     // trigger battle
     reset_battle();
     props.begin_battle_trigger_fcn();
@@ -278,10 +282,8 @@ export default function BattleSim(props) {
         add_to_log("Defender has no ships. Attacker automatically wins")
         return
       }
-      console.log("ship dct", ship_dct)
       // calculate battle order
-      var b_battle_ready = calc_battle_order()
-      // TODO: grey out divs which aren't active
+      var b_battle_ready = calc_battle_order(true)
       if (b_battle_ready){
         setincrement_order_trigger(increment_order_trigger + 1)
         add_to_log("Battle Order Calculated.")
@@ -332,7 +334,6 @@ export default function BattleSim(props) {
     setb_battle_over(false)
     setincrement_order_trigger(0)
     setorder_id(-1)
-    setmissile_id(-1)
     ship_dct = {} // reset globals
     ship_id = 0
   }
@@ -341,6 +342,8 @@ export default function BattleSim(props) {
     if (b_battle_over & battle_ready){
       add_to_log(`Battle Over! ${playerType} won with these ships remaining: `)
       players.current[playerType].print_active_ships().forEach((str1) => {add_to_log(str1)})
+      // print out the ships that successfully retreated
+      // TODO
       reset_battle()
     }
   }, [b_battle_over])
@@ -369,18 +372,19 @@ export default function BattleSim(props) {
     // triggered when setincrement_order_trigger is called
     // if missile round
     if (b_missile_round){
-      var new_id = missile_id + 1
-      if (new_id >= missile_order.length){
+      var new_id = order_id + 1
+      if (new_id >= order.length){
+        // end of missile round
         setb_missile_round(false);
-        // special case: some missiles and no cannons: attacker is forced to retreat...
-        if (order.length === 0){
-          setb_battle_over(true)
-          add_to_log("No ships have cannons. Attacker is forced to retreat. Battle over.")
-        }
+        // rerun calc battle order
+        calc_battle_order(false)
+        setincrement_order_trigger(increment_order_trigger + 1)
       }
       else{
-        setmissile_id(new_id);
-        setplayerType(missile_order[new_id][Globals.ORDER_PLAYER])
+        let ship_blueprint = players.current[order[new_id][Globals.ORDER_PLAYER]].ships[order[new_id][Globals.ORDER_SHIP]]
+        add_to_log(`${order[new_id][Globals.ORDER_PLAYER]} is firing MISSILES using ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s)!!!`)
+        setorder_id(new_id);
+        setplayerType(order[new_id][Globals.ORDER_PLAYER])
       }
     }
     else{
@@ -397,8 +401,10 @@ export default function BattleSim(props) {
         count += 1
         // console.log(count < order.length, retreated, ship_blueprint.get_nb_active_ships())
       } while (count <= order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0)); // skip to next ship if this one has retreated, protection against infinite loops
+      // special case: some missiles and no cannons: attacker is forced to retreat...
       if (count > order.length){
-        console.log('something went wrong...')
+        setb_battle_over(true)
+        add_to_log("No ships have cannons. Attacker is forced to retreat. Battle over.")
         console.log(player)
       }
       add_to_log(`${order[new_order_id][Globals.ORDER_PLAYER]} is attacking with ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s).`)
@@ -529,19 +535,20 @@ export default function BattleSim(props) {
       {/* Defender Side */}
       <Box sx={{margin:'10px', width: 400}}> 
         {Globals.shipTypes.map((shipType) => {
-          {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
+          {let nb_active = players.current['Defender'].ships[shipType].get_nb_active_ships()
           if (nb_active > 0){
             return (
             <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
               <Box sx={{ visibility: 'hidden' }} ><img width={25} height={25} src={hand} alt="hand" /></Box>
               <Paper>{shipType}</Paper>
-              <Paper>Count: {players.current['Defender'].ships[shipType].get_nb_active_ships()}</Paper>
+              <Paper>Count: {nb_active}</Paper>
               <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
             </Stack>
           )}}
           })}
       </Box>
     </Stack>
+    <AreYouSure open={open_alert} setOpen={setopen_alert} dialog={"Since the battle is ongoing, you're about to reset. Are you sure?"}/>
   </Box>
   )
 }

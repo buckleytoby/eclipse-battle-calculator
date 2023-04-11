@@ -156,7 +156,7 @@ return(
       </Stack>
     </Stack>
   </Modal>
-  <AreYouSure open={open_alert} setOpen={setopen_alert} b_areyousure={b_areyousure}/>
+  <AreYouSure open={open_alert} setOpen={setopen_alert} b_areyousure={b_areyousure} dialog={"Due to the opponent's shields, you're about to waste this roll. Are you sure?"}/>
   </DragDropContext>
   )
 }
