@@ -116,12 +116,13 @@ export default function HitsModal(props) {
   // effect to auto-close modal when all hits have been attributed
   var hits_length = props.hits.length
   var inactive_ships_length = props.inactive_ships.length
+  var open = props.open
   React.useEffect(() => {
-    if (hits_length === 0 | inactive_ships_length === 0){
+    if (open & (hits_length === 0 | inactive_ships_length === 0)){
       // close modal
       props.onClose(false)
     }
-  }, [hits_length, inactive_ships_length])
+  }, [open, hits_length, inactive_ships_length])
 
 return(
   <DragDropContext onDragEnd={onDragEnd}>

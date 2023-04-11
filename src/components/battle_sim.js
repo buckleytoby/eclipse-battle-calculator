@@ -116,7 +116,7 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
         this.active_ships.splice(key, 1)
       }
     })
-    console.log(this.active_ships)
+    console.log("active ships", this.active_ships)
   }
   get_active_ships = () => {
     return this.active_ships
@@ -149,11 +149,12 @@ class Player{
     return active_ships
   }
   get_nb_active_ships = () => {
-    var nb_active_ships = 0
-    nb_active_ships = Object.keys(this.ships).reduce((accumulator, key) => (
-      accumulator + this.ships[key].get_nb_active_ships()
-    ), nb_active_ships)
-    return nb_active_ships
+    return this.get_active_ships().length
+    // var nb_active_ships = 0
+    // nb_active_ships = Object.keys(this.ships).reduce((accumulator, key) => (
+    //   accumulator + this.ships[key].get_nb_active_ships()
+    // ), nb_active_ships)
+    // return nb_active_ships
 
   }
   is_active = () => {
@@ -179,9 +180,9 @@ export default function BattleSim(props) {
   const [log, setlog] = React.useState(['log empty'])
   const [playerType, setplayerType] = React.useState('Attacker')
   const [order, setorder] = React.useState([])
-  const [order_id, setorder_id] = React.useState(0)
+  const [order_id, setorder_id] = React.useState(-1)
   const [missile_order, setmissile_order] = React.useState([])
-  const [missile_id, setmissile_id] = React.useState(0)
+  const [missile_id, setmissile_id] = React.useState(-1)
   const [b_missile_round, setb_missile_round] = React.useState(true)
   const [attacker_updated, setattacker_updated] = React.useState(false)
   const [defender_updated, setdefender_updated] = React.useState(false)
@@ -195,6 +196,7 @@ export default function BattleSim(props) {
   const scrollbar_ref = React.useRef()
 
   const did_inactive_player_lose = () => {
+    console.log("Inactive # Ships: ", players.current[OtherPlayer(playerType)].get_nb_active_ships())
     return players.current[OtherPlayer(playerType)].get_nb_active_ships() === 0 ? true : false
   }
   
@@ -245,11 +247,11 @@ export default function BattleSim(props) {
       add_to_log("There are no ships in this battle.")
       return false;
     } // set order state, reset the order_id, reset player to first
-    if (ls.length  > 0) {setorder(ls); setorder_id(0); setplayerType(ls[0][Globals.ORDER_PLAYER])}
+    if (ls.length  > 0) {setorder(ls)}
     // check if skip missile round
     if (ls_missile.length === 0){
       setb_missile_round(false);
-    } else{setmissile_order(ls_missile); setmissile_id(0); setplayerType(ls_missile[0][Globals.ORDER_PLAYER])}
+    } else{setmissile_order(ls_missile)}
     
     return true;
   }
@@ -281,6 +283,7 @@ export default function BattleSim(props) {
       var b_battle_ready = calc_battle_order()
       // TODO: grey out divs which aren't active
       if (b_battle_ready){
+        setincrement_order_trigger(increment_order_trigger + 1)
         add_to_log("Battle Order Calculated.")
         setbattle_ready(true)
       }}
@@ -328,6 +331,8 @@ export default function BattleSim(props) {
     setb_missile_round(true)
     setb_battle_over(false)
     setincrement_order_trigger(0)
+    setorder_id(-1)
+    setmissile_id(-1)
     ship_dct = {} // reset globals
     ship_id = 0
   }
@@ -361,6 +366,7 @@ export default function BattleSim(props) {
   }
   //
   const increment_order = () => {
+    // triggered when setincrement_order_trigger is called
     // if missile round
     if (b_missile_round){
       var new_id = missile_id + 1
@@ -378,23 +384,24 @@ export default function BattleSim(props) {
       }
     }
     else{
-      var count = 0
+      let count = 0
       var player = undefined
       var new_order_id = order_id
       var ship_blueprint = undefined
       var retreated = false
       do {
-        new_order_id = (order_id + 1) % order.length
+        new_order_id = (new_order_id + 1) % order.length
         player = players.current[order[new_order_id][Globals.ORDER_PLAYER]]
         ship_blueprint = player.ships[order[new_order_id][Globals.ORDER_SHIP]]
-        retreated = players.current[playerType].ships[order[new_order_id][Globals.ORDER_SHIP]].retreated
+        retreated = ship_blueprint.retreated
         count += 1
-      } while (retreated & ship_blueprint.get_nb_active_ships() === 0 & count <= order.length); // skip to next ship if this one has retreated, protection against infinite loops
+        // console.log(count < order.length, retreated, ship_blueprint.get_nb_active_ships())
+      } while (count <= order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0)); // skip to next ship if this one has retreated, protection against infinite loops
       if (count > order.length){
         console.log('something went wrong...')
         console.log(player)
       }
-      add_to_log(`${order[new_order_id][Globals.ORDER_PLAYER]} is attacking.`)
+      add_to_log(`${order[new_order_id][Globals.ORDER_PLAYER]} is attacking with ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s).`)
       setorder_id(new_order_id);
       setplayerType(order[new_order_id][Globals.ORDER_PLAYER])
     }
@@ -478,14 +485,18 @@ export default function BattleSim(props) {
     <Stack direction='row' justifyContent="space-between" sx={{width:1500}}>
       {/* Attacker Side */}
       <Box sx={{margin:'10px', width: 400}}> 
-        {Globals.shipTypes.map((shipType) => (
-          <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-            <Paper>{shipType}</Paper>
-            <Paper>Count</Paper>
-            <RadioAttackRetreat onChange={players.current['Attacker'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
-            <Box sx={{ visibility: 'hidden' }}><img width={25} height={25} src={hand} alt="hand" /></Box>
-          </Stack>
-        ))}
+        {Globals.shipTypes.map((shipType) => {
+          {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
+          if (nb_active > 0){
+            return (
+            <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+              <Paper>{shipType}</Paper>
+              <Paper>Count {nb_active}</Paper>
+              <RadioAttackRetreat onChange={players.current['Attacker'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
+              <Box sx={{ visibility: 'hidden' }}><img width={25} height={25} src={hand} alt="hand" /></Box>
+            </Stack>
+          )}}
+          })}
       </Box>
 
       {/******** Controls *********/}
@@ -510,19 +521,25 @@ export default function BattleSim(props) {
           </Paper>
       </Stack>
 
-      <HitsModal ship_dct={ship_dct} dmg_ship={dmg_ship} inactive_ships={players.current[OtherPlayer(playerType)].get_active_ships()} open={hits_open} setopen={sethits_open} onClose={hits_onClose_cb} active_player={playerType} hits={hits} sethits={sethits}/>
+      <HitsModal ship_dct={ship_dct} dmg_ship={dmg_ship} did_inactive_player_lose={did_inactive_player_lose}
+      inactive_ships={players.current[OtherPlayer(playerType)].get_active_ships()} 
+      open={hits_open} setopen={sethits_open} onClose={hits_onClose_cb} active_player={playerType} hits={hits} sethits={sethits}/>
 
 
       {/* Defender Side */}
       <Box sx={{margin:'10px', width: 400}}> 
-        {Globals.shipTypes.map((shipType) => (
-          <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-            <Box sx={{ visibility: 'hidden' }} ><img width={25} height={25} src={hand} alt="hand" /></Box>
-            <Paper>{shipType}</Paper>
-            <Paper>Count</Paper>
-            <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
-          </Stack>
-        ))}
+        {Globals.shipTypes.map((shipType) => {
+          {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
+          if (nb_active > 0){
+            return (
+            <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+              <Box sx={{ visibility: 'hidden' }} ><img width={25} height={25} src={hand} alt="hand" /></Box>
+              <Paper>{shipType}</Paper>
+              <Paper>Count: {players.current['Defender'].ships[shipType].get_nb_active_ships()}</Paper>
+              <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
+            </Stack>
+          )}}
+          })}
       </Box>
     </Stack>
   </Box>
