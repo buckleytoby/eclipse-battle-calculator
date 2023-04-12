@@ -1,8 +1,6 @@
 import * as React from 'react';
 import './App.css';
-import Button from '@mui/material/Button';
 import { Grid, Box } from '@mui/material';
-import Grid2 from '@mui/material/Unstable_Grid2'; // Grid version 2
 import ResponsiveAppBar from './components/responsiveappbar';
 import {ShipSelect} from './components/selector';
 import Stack from '@mui/material/Stack';

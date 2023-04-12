@@ -2,8 +2,6 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack'
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
 import hand from '../assets/pointing-to-right.png';
 import { Button, List } from '@mui/material';
 import Divider from '@mui/material/Divider';
@@ -14,6 +12,7 @@ import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 import AreYouSure from './alert';
+import { AttributeHitsAI, GetAllHits } from './ai';
 
 const OtherPlayer = (playerType) => {
   return playerType === Globals.playerType[0] ? Globals.playerType[1] : Globals.playerType[0]
@@ -74,6 +73,12 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     this.make_active_ships = this.make_active_ships.bind(this);
     this.get_active_ships = this.get_active_ships.bind(this);
     this.get_nb_active_ships = this.get_nb_active_ships.bind(this);
+  }
+  set_retreated = (value) => {
+    if ((typeof value) == 'boolean'){
+      this.retreated = value
+      // add_to_log(`${nb_active_ships} ${ship_blueprint.shipType}'s have succesfully escaped`)
+    }
   }
   set_battle_stats = (data, playerType) => {
     this.nb_ships = data.nb_ships;
@@ -169,13 +174,6 @@ class Player{
   }
 }
 
-var dice = {
-  sides: 6,
-  roll: function () {
-    var randomNumber = Math.floor(Math.random() * this.sides) + 1;
-    return randomNumber;
-  }
-}
 
 export default function BattleSim(props) {
   const [log, setlog] = React.useState(['log empty'])
@@ -239,7 +237,7 @@ export default function BattleSim(props) {
           ls.push([playerType, shipType, ship.nb_initiative])
         }
       })))
-    ls.sort((a, b) => {return b[2] - a[2]}) // query the initiative 
+    ls.sort((a, b) => {return b[2] - a[2]}) // query the initiative  // sorts in place
     // check for no ships
     if (!is_missile_round & ls.length === 0){
       add_to_log("There are no ships in this battle.")
@@ -348,25 +346,6 @@ export default function BattleSim(props) {
     }
   }, [b_battle_over])
 
-  // hit determiner
-  const calc_hit_roll = (computers) => {
-    var result = dice.roll()
-    // auto miss if one
-    if (result === 1){return 0}
-    // auto hit if 6
-    if (result === 6){return 99}
-    // else, add computer
-    return result;
-  }
-  // get ship hits
-  const get_hits = (hits, nb_computers, nb_die, dmgType) => {
-    [...Array(nb_die)].forEach(() => {
-      var result = calc_hit_roll(nb_computers)
-      if (result + nb_computers >= 6){
-        hits.push( [result, result + nb_computers, Globals.damages[dmgType]] )
-      }
-    })
-  }
   //
   const increment_order = () => {
     // triggered when setincrement_order_trigger is called
@@ -424,8 +403,6 @@ export default function BattleSim(props) {
     let player = players.current[playerType]
     let ship_blueprint = player.ships[shipType]
     let nb_active_ships = ship_blueprint.get_nb_active_ships()
-    let hits = []
-    let result = 0;
     //
     if (nb_active_ships === 0){
       console.log("something went wrong...")
@@ -433,40 +410,19 @@ export default function BattleSim(props) {
       setincrement_order_trigger(increment_order_trigger + 1)
       return
     }
-    // Missiles
-    if (b_missile_round) {
-      // roll for missiles
-      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow_missiles, "yellow_missiles")
-      get_hits(hits, ship_blueprint, ship_blueprint.nb_orange_missiles, "orange_missiles")
-      // set missile status to none
-      ship_blueprint.b_has_missiles = false
-    }
-    else{ // Loop engagement rounds
-      if (ship_blueprint.wants_to_retreat){ // Begin retreating
-        ship_blueprint.retreating = true;
-      }
-      else if (ship_blueprint.retreating){ // Retreat
-        // succesfully retreated
-        ship_blueprint.retreated = true;
-        add_to_log(`${nb_active_ships} ${ship_blueprint.shipType}'s have succesfully escaped`)
-      }
-      else{ // Roll cannons
-        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow, "yellow_cannon")
-        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_orange, "orange_cannon")
-        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_blue, "blue_cannon")
-        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_red, "red_cannon")
-      }
-    }
+    
+    let hits = GetAllHits(b_missile_round, ship_blueprint)
+    
     if (hits.length >0){
       console.log("Hits rolled: ", hits)
       add_to_log(`Hit! ${playerType}'s ${shipType}'s hit with ${hits.length} roll(s)`)
         
       // Distribute Damage like the AI
       if (player.auto_damage_on){
-        // Kill ships biggest to smallest
-    
-        // Place rest of remaining damage on largest ship
-
+        sethits(hits)
+        var inactive_ships = players.current[OtherPlayer(playerType)].get_active_ships() // list
+        AttributeHitsAI(inactive_ships, hits, dmg_ship)
+        check_battle_over()
       }
       else{
         // Maybe a modal asking user to distribute dices of damage?
@@ -478,12 +434,14 @@ export default function BattleSim(props) {
       setincrement_order_trigger(increment_order_trigger + 1)
     }
   }
+  var check_battle_over = () =>{
+    if (battle_ready & did_inactive_player_lose()){setb_battle_over(true); return}
+    if (battle_ready){ setincrement_order_trigger(increment_order_trigger + 1)}
+  }
 
   var hits_onClose_cb = () => {
     sethits_open(false)
-    // check if battle over
-    if (battle_ready & did_inactive_player_lose()){setb_battle_over(true); return}
-    if (battle_ready){ setincrement_order_trigger(increment_order_trigger + 1)}
+    check_battle_over()
   }
 
   return(
