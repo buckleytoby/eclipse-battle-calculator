@@ -12,26 +12,47 @@ import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 import AreYouSure from './alert';
-import { AttributeHitsAI, GetAllHits } from './ai';
+import { AttributeHitsAI, GetAllHits, RunMonteCarloSim } from './ai';
+var util = require('util');
 
 const OtherPlayer = (playerType) => {
   return playerType === Globals.playerType[0] ? Globals.playerType[1] : Globals.playerType[0]
 }
 
 var ship_id = 0
+var virtual_ship_id = 0
 var ship_dct = {}
 
 class Ship{
-  constructor (shipType, nb_hull, nb_shields){
+  constructor (shipType, nb_hull, nb_shields, ship_dct){
     this.shipType = shipType
     this.nb_hull = nb_hull
     this.nb_shields = nb_shields
+    this.ship_dct = ship_dct
     this.damage_taken = 0
-    this.id = ship_id; ship_id += 1
     // bind functions
     this.is_dead = this.is_dead.bind(this);
     this.receive_damage = this.receive_damage.bind(this);
-    ship_dct[this.id] = this;
+    this.add_to_ship_dct = this.add_to_ship_dct.bind(this);
+    this.set_dmg = this.set_dmg.bind(this)
+    this.copy = this.copy.bind(this)
+    // call some fcns
+    this.add_to_ship_dct()
+  }
+  copy = (other) => {
+    other.set_dmg(this.damage_taken)
+  }
+  set_dmg = (val) => {
+    this.damage_taken = val
+  }
+  add_to_ship_dct = () => {
+    if (false){ // "virtual" in this.ship_dct){
+      this.id = virtual_ship_id; virtual_ship_id += 1
+      this.ship_dct[this.id] = this;
+    } else{
+      this.id = ship_id; ship_id += 1
+      this.ship_dct[this.id] = this;
+    }
   }
   is_dead = () => {
     // if # of hulls + 1 base hp <= amount of damage taken
@@ -47,8 +68,9 @@ class Ship{
 }
 
 class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, etc.) TODO: rename to ShipBlueprint
-  constructor (shipType) {
+  constructor (shipType, ship_dct) {
     this.shipType = shipType;
+    this.ship_dct = ship_dct
     this.b_has_missiles = false;
     this.nb_ships= 0;
     this.nb_shields= 0;
@@ -73,6 +95,28 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     this.make_active_ships = this.make_active_ships.bind(this);
     this.get_active_ships = this.get_active_ships.bind(this);
     this.get_nb_active_ships = this.get_nb_active_ships.bind(this);
+    this.setup_battle = this.setup_battle.bind(this);
+    this.get_battle_stats = this.get_battle_stats.bind(this);
+    this.copy = this.copy.bind(this)
+  }
+  copy = (other, playerType) => {
+    other.set_battle_stats(this.get_battle_stats(), playerType)
+    // must wrap in a setter?
+    other.b_has_missiles = this.b_has_missiles
+    other.wants_to_retreat = this.wants_to_retreat
+    other.retreating = this.retreating
+    other.RadioAttackRetreatValue = this.RadioAttackRetreatValue
+    other.retreated = this.retreated
+    // other.make_active_ships() // can't do this, need to base it off this's active ships
+    // copy my Ships data into Other
+    var ships_new = []
+    this.active_ships.forEach((ship, idx) => {
+      var ship_new = new Ship(other.shipType, other.nb_hull, other.nb_shields, other.ship_dct)
+      ship.copy(ship_new)
+      ships_new.push(ship_new)
+  })
+    other.active_ships = ships_new
+    other.update_active_ships() // now this might not be necessary
   }
   set_retreated = (value) => {
     if ((typeof value) == 'boolean'){
@@ -92,9 +136,27 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     this.nb_orange_missiles = data.nb_orange_missiles;
     this.nb_hull = data.nb_hull;
     this.nb_initiative = data.nb_initiative;
+  }
+  setup_battle = (data, playerType) => {
+    this.set_battle_stats(data, playerType)
     if (playerType === "Defender"){this.nb_initiative += 0.5} // Defender advantage
     if (this.nb_yellow_missiles > 0 | this.nb_orange_missiles > 0){this.b_has_missiles = true}
     this.make_active_ships()
+  }
+  get_battle_stats = () => {
+    return {
+      'nb_ships': this.nb_ships,
+      'nb_shields': this.nb_shields,
+      'nb_computers': this.nb_computers,
+      'nb_yellow': this.nb_yellow,
+      'nb_orange': this.nb_orange,
+      'nb_blue': this.nb_blue,
+      'nb_red': this.nb_red,
+      'nb_yellow_missiles': this.nb_yellow_missiles,
+      'nb_orange_missiles': this.nb_orange_missiles,
+      'nb_hull': this.nb_hull,
+      'nb_initiative': this.nb_initiative,
+    }
   }
   set_retreat_attack = (event) => {
     this.RadioAttackRetreatValue = event.target.value;
@@ -107,22 +169,21 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
   }
   make_active_ships = () => {
   // make enumeration of all active ships
-  console.log("Making active Ships")
   var activeShips = [];
-  [...Array(this.nb_ships)].forEach((_) => (
-    activeShips.push(new Ship(this.shipType, this.nb_hull, this.nb_shields))
-  ))
+  [...Array(this.nb_ships)].forEach((_) => {
+    var ship = new Ship(this.shipType, this.nb_hull, this.nb_shields, this.ship_dct)
+    activeShips.push(ship)
+      })
   this.active_ships = activeShips
   }
   update_active_ships = () => {
     // dead ships aren't active ships
-    Object.keys(this.active_ships).forEach ((key) => {
-      if (this.active_ships[key].is_dead()){
-        console.log("Deleting ship: ", key)
-        this.active_ships.splice(key, 1)
-      }
-    })
-    console.log("active ships", this.active_ships)
+    var activeShips = [];
+    this.active_ships.forEach((ship, idx) => {
+      if (!ship.is_dead()){
+        activeShips.push(ship)
+      }})
+    this.active_ships = activeShips
   }
   get_active_ships = () => {
     return this.active_ships
@@ -133,19 +194,29 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
 }
 
 class Player{
-  constructor(playerType){
+  constructor(playerType, ship_dct){
     this.playerType = playerType;
+    this.ship_dct = ship_dct;
     this.auto_damage_on = false;
     // ships is an object (i.e. key-value pairs)
-    this.ships = Object.fromEntries( Globals.shipTypes.map((shipType, idx) => ([shipType, new ShipBlueprint(shipType)])) )
-    this.set_battle_stats = this.set_battle_stats.bind(this);
+    this.ships = Object.fromEntries( Globals.shipTypes.map((shipType, idx) => ([shipType, new ShipBlueprint(shipType, this.ship_dct)])) )
+    this.setup_battle = this.setup_battle.bind(this);
     this.get_active_ships = this.get_active_ships.bind(this);
     this.is_active = this.is_active.bind(this);
     this.print_active_ships = this.print_active_ships.bind(this);
+    this.copy = this.copy.bind(this);
   }
-  set_battle_stats = (data) => {
+  copy = (ship_dct) => {
+    // if ("virtual" in ship_dct){virtual_ship_id = 0}
+    var p = new Player(this.playerType, ship_dct)
+    Object.keys(this.ships).forEach((shipType) => {
+      this.ships[shipType].copy(p.ships[shipType], shipType)
+    })
+    return p
+  }
+  setup_battle = (data) => {
     Object.keys(data).forEach((shipType) => {
-      this.ships[shipType].set_battle_stats(data[shipType], this.playerType)
+      this.ships[shipType].setup_battle(data[shipType], this.playerType)
     })}
   get_active_ships = () => {
     var active_ships = []
@@ -174,7 +245,15 @@ class Player{
   }
 }
 
+const make_ship_dct = (players) => {
+  for (var player of Object.entries(players)){
+    for (var ship in player.get_active_ships()){
+      ship.add_to_ship_dct(ship_dct)
+    }
+  }
+}
 
+/////////////////////////////////////////////////////////////////////////////////////////
 export default function BattleSim(props) {
   const [log, setlog] = React.useState(['log empty'])
   const [playerType, setplayerType] = React.useState('Attacker')
@@ -188,9 +267,12 @@ export default function BattleSim(props) {
   const [hits, sethits] = React.useState([])
   const [b_battle_over, setb_battle_over] = React.useState(false)
   const [increment_order_trigger, setincrement_order_trigger] = React.useState(0)
+  const [run_sim_trigger, setrun_sim_trigger] = React.useState(0)
   const [open_alert, setopen_alert] = React.useState(false);
+  const [attacker_prob_win, setattacker_prob_win] = React.useState(50);
+  const [defender_prob_win, setdefender_prob_win] = React.useState(50);
 
-  const players = React.useRef({'Attacker': new Player('Attacker'), 'Defender': new Player('Defender')})
+  const players = React.useRef({'Attacker': new Player('Attacker', ship_dct), 'Defender': new Player('Defender', ship_dct)})
   const scrollbar_ref = React.useRef()
 
   const did_inactive_player_lose = () => {
@@ -284,15 +366,17 @@ export default function BattleSim(props) {
       var b_battle_ready = calc_battle_order(true)
       if (b_battle_ready){
         setincrement_order_trigger(increment_order_trigger + 1)
+        setrun_sim_trigger(run_sim_trigger + 1)
         add_to_log("Battle Order Calculated.")
         setbattle_ready(true)
+        console.log(ship_dct)
       }}
   }, [attacker_updated, defender_updated]);
 
   React.useEffect(() => {
     if (props.defender_setup) {
       // Load Attacker
-      players.current['Defender'].set_battle_stats(props.data_defender.current)
+      players.current['Defender'].setup_battle(props.data_defender.current)
       add_to_log("Defender Stats Successfully loaded.")
       setdefender_updated(true);
       }
@@ -301,7 +385,7 @@ export default function BattleSim(props) {
   React.useEffect(() => {
     if (props.attacker_setup) {
       // Load Attacker
-      players.current['Attacker'].set_battle_stats(props.data_attacker.current)
+      players.current['Attacker'].setup_battle(props.data_attacker.current)
       add_to_log("Attacker Stats Successfully loaded.")
       setattacker_updated(true);
       }
@@ -319,8 +403,17 @@ export default function BattleSim(props) {
     if (increment_order_trigger > 0) {
       // Increment the order #
       increment_order()
-      }
-  }, [increment_order_trigger]);
+      
+    }}, [increment_order_trigger]);
+
+    
+  React.useEffect(() => {
+    if (run_sim_trigger > 0) {
+      // recalculate likelihoods
+      let results = RunMonteCarloSim(players, b_missile_round, order_id, order, playerType, ship_id);
+      setattacker_prob_win(Math.round(results[0]));
+      setdefender_prob_win(Math.round(results[1]));
+    }}, [run_sim_trigger]);
 
   // reset battle
   const reset_battle = () => {
@@ -332,7 +425,10 @@ export default function BattleSim(props) {
     setb_battle_over(false)
     setincrement_order_trigger(0)
     setorder_id(-1)
-    ship_dct = {} // reset globals
+    // reset globals
+    for (var key in ship_dct){
+      delete ship_dct[key]
+    }
     ship_id = 0
   }
 
@@ -432,6 +528,7 @@ export default function BattleSim(props) {
     } else{ 
       add_to_log("Miss!")
       setincrement_order_trigger(increment_order_trigger + 1)
+      setrun_sim_trigger(run_sim_trigger + 1) // probs change depending on the turn order, which changes here
     }
   }
   var check_battle_over = () =>{
@@ -441,6 +538,7 @@ export default function BattleSim(props) {
 
   var hits_onClose_cb = () => {
     sethits_open(false)
+    setrun_sim_trigger(run_sim_trigger + 1) // only do after hits are registered
     check_battle_over()
   }
 
@@ -449,6 +547,10 @@ export default function BattleSim(props) {
     <Stack direction='row' justifyContent="space-between" sx={{width:1500}}>
       {/* Attacker Side */}
       <Box sx={{margin:'10px', width: 400}}> 
+        <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+          <h2>Attacker</h2>
+          <Paper sx={{fontSize: 25}}>Win Chance: {attacker_prob_win}%</Paper>
+        </Stack>
         {Globals.shipTypes.map((shipType) => {
           {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
           if (nb_active > 0){
@@ -492,6 +594,10 @@ export default function BattleSim(props) {
 
       {/* Defender Side */}
       <Box sx={{margin:'10px', width: 400}}> 
+        <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+          <Paper sx={{fontSize: 25}}>Win Chance: {defender_prob_win}%</Paper>
+          <h2>Defender</h2>
+        </Stack>
         {Globals.shipTypes.map((shipType) => {
           {let nb_active = players.current['Defender'].ships[shipType].get_nb_active_ships()
           if (nb_active > 0){
