@@ -1,6 +1,7 @@
 {
   "name": "eclipse-battle-calculator",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.10.6",
