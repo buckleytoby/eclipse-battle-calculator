@@ -51,30 +51,29 @@ const get_hits = (hits, nb_computers, nb_die, dmgType) => {
   })
 }
 
-export function GetAllHits(b_missile_round, ship_blueprint) {
+export function GetAllHits(state, ship_blueprint) {
   let hits = []
   let nb_active_ships = ship_blueprint.get_nb_active_ships()
 
-  if (b_missile_round) { // Missiles
-    // roll for missiles
-    get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow_missiles, "yellow_missiles")
-    get_hits(hits, ship_blueprint, ship_blueprint.nb_orange_missiles, "orange_missiles")
-    // set missile status to none
-    ship_blueprint.b_has_missiles = false
-  } else{ // cannons
-    if (ship_blueprint.wants_to_retreat){ // Begin retreating
-      ship_blueprint.retreating = true;
-    }
-    else if (ship_blueprint.retreating){ // Retreat
-      // succesfully retreated
-      ship_blueprint.set_retreated(true)
-    }
-    else{ // Roll cannons
-      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow, "yellow_cannon")
-      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_orange, "orange_cannon")
-      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_blue, "blue_cannon")
-      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_red, "red_cannon")
-    }
+  // according to the rulebook, pg 19, retreating happens during a "Ship Activation", which logically includes missile activations
+  if (ship_blueprint.retreating){ // Retreat, must be first because we don't reset want_to_retreat once retreating, but we could
+    // succesfully retreated
+    state.add_to_log.push( ship_blueprint.set_retreated(true) )
+  } else if (ship_blueprint.wants_to_retreat){ // Begin retreating
+    ship_blueprint.retreating = true;
+  } else{
+    if (state.b_missile_round) { // Missiles
+      // roll for missiles
+      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow_missiles, "yellow_missiles")
+      get_hits(hits, ship_blueprint, ship_blueprint.nb_orange_missiles, "orange_missiles")
+      // set missile status to none
+      ship_blueprint.b_has_missiles = false
+    } else{ // Roll cannons
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow, "yellow_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_orange, "orange_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_blue, "blue_cannon")
+        get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_red, "red_cannon")
+      }
   }
   return hits
 }
@@ -136,7 +135,7 @@ const calc_battle_order = (players, is_missile_round = true) => {
   return ls
 }
 
-const get_next_ship_blueprint = (state) => {
+export const get_next_ship_blueprint = (state) => {
   var ship_blueprint = undefined
   var new_order_id = state.order_id // initial value of state.order_id should be -1 .... but what about after 'roll'?
   // if missile round
@@ -159,24 +158,32 @@ const get_next_ship_blueprint = (state) => {
       let p = state.order[new_order_id][ORDER_PLAYER];
       let s = state.order[new_order_id][ORDER_SHIP]
       ship_blueprint = state.players[p].ships[s]
+      state.add_to_log.push(`${p} is firing MISSILES using ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s)!!!`)
     }
   }
   else{
     let count = 0
     var player = undefined
     var retreated = false
+    let p = undefined; let s = undefined
     do {
       new_order_id = (new_order_id + 1) % state.order.length
-      let p = state.order[new_order_id][ORDER_PLAYER];
-      let s = state.order[new_order_id][ORDER_SHIP]
+      p = state.order[new_order_id][ORDER_PLAYER];
+      s = state.order[new_order_id][ORDER_SHIP]
       ship_blueprint = state.players[p].ships[s]
       retreated = ship_blueprint.retreated
       count += 1
     } while (count <= state.order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0)); // skip to next ship if this one has retreated, protection against infinite loops
+    if (count > state.order.length){
+      state.add_to_log.push("No ships have cannons. Attacker is forced to retreat. Battle over.")
+      return [state, undefined]
+    } else {
+      state.add_to_log.push(`${p} is attacking with ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s).`)
+    }
   }
   state.order_id = new_order_id
   state.playerType = state.order[new_order_id][ORDER_PLAYER]
-  return ship_blueprint
+  return [state, ship_blueprint]
 }
 
 function RunOneSim(state){
@@ -195,7 +202,7 @@ function RunOneSim(state){
   while (!b_over & count < 999){
     count += 1
     // Increment Order to get active ships
-    var ship_blueprint = get_next_ship_blueprint(state)
+    var ship_blueprint = get_next_ship_blueprint(state)[1]
     // with undefined, attacker loses
     if (ship_blueprint === undefined){
       return "Defender"
@@ -208,8 +215,9 @@ function RunOneSim(state){
     // // console.log("inactive ships: ", inactive_ships)
 
     // Roll Die
-    var hits = GetAllHits(state.b_missile_round, ship_blueprint)
+    var hits = GetAllHits(state, ship_blueprint)
     // console.log("hits" , hits)
+    if (hits.length === 0){continue}
 
     // Attribute Die
     AttributeHitsAI(inactive_ships, hits, dmg_ship)
@@ -275,7 +283,7 @@ function make_players(players){
 
 function make_state_copy(players, b_missile_round, order_id, order, playerType, _ship_dct_id){
   // need to make deep copy of players
-  var state = {}
+  var state = {'add_to_log': []}
   ship_dct_id = _ship_dct_id
   ship_dct = {"virtual": true}
   // need to add on state info
@@ -323,7 +331,7 @@ export function RunMonteCarloSim(players, b_missile_round, order_id, order, play
   // calculate probability
   if (count > 0){
     var prob_A = wins_A / count * 100.0; prob_A = prob_A < 1 ? 1 : prob_A; prob_A = prob_A > 99 ? 99 : prob_A // bounds between 1 & 99
-    var prob_D = wins_D / count * 100.0; prob_D = prob_D < 1 ? 1 : prob_D; prob_D = prob_D < 99 ? 99 : prob_D // bounds between 1 & 99
+    var prob_D = wins_D / count * 100.0; prob_D = prob_D < 1 ? 1 : prob_D; prob_D = prob_D > 99 ? 99 : prob_D // bounds between 1 & 99
     return [prob_A, prob_D]
   } else{
     return [0.0, 0.0]

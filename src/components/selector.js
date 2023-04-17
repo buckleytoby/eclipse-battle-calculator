@@ -78,13 +78,13 @@ const defaults = {
 }
 
 if (Globals.TEST){
-  // defaults.Interceptor.nb_ships = 1
-  // defaults.Interceptor.nb_yellow_missiles = 2
-  // defaults.Interceptor.nb_computers = 1
-  // defaults.Cruiser.nb_ships = 1
-  // defaults.Cruiser.nb_orange = 2
-  // defaults.Cruiser.nb_hull = 1
-  // defaults.Cruiser.nb_computers = 2
+  defaults.Interceptor.nb_ships = 1
+  defaults.Interceptor.nb_yellow_missiles = 2
+  defaults.Interceptor.nb_computers = 1
+  defaults.Cruiser.nb_ships = 1
+  defaults.Cruiser.nb_orange = 2
+  defaults.Cruiser.nb_hull = 1
+  defaults.Cruiser.nb_computers = 2
   defaults.Dreadnought.nb_ships = 1
   defaults.Dreadnought.nb_yellow = 1
   // defaults.Dreadnought.nb_shields = 0

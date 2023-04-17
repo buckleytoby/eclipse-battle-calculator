@@ -12,7 +12,7 @@ import Confirm_modal from './confirm_modal';
 import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 import AreYouSure from './alert';
-import { AttributeHitsAI, GetAllHits, RunMonteCarloSim } from './ai';
+import { AttributeHitsAI, GetAllHits, RunMonteCarloSim, get_next_ship_blueprint} from './ai';
 ////////////// framer library for animation
 import { motion } from 'framer-motion';
 var util = require('util');
@@ -87,6 +87,7 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     this.nb_initiative= 0;
     this.active_ships = [];
 
+    // must be reset
     this.wants_to_retreat = false; // asynch
     this.retreating = false; // triggers on engagement round
     this.RadioAttackRetreatValue = "attack";
@@ -100,6 +101,7 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     this.setup_battle = this.setup_battle.bind(this);
     this.get_battle_stats = this.get_battle_stats.bind(this);
     this.copy = this.copy.bind(this)
+    this.reset = this.reset.bind(this)
   }
   copy = (other, playerType) => {
     other.set_battle_stats(this.get_battle_stats(), playerType)
@@ -120,11 +122,17 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     other.active_ships = ships_new
     other.update_active_ships() // now this might not be necessary
   }
+  reset = () => {
+    this.wants_to_retreat = false
+    this.retreating = false
+    this.RadioAttackRetreatValue = "attack"
+    this.retreated = false
+  }
   set_retreated = (value) => {
     if ((typeof value) == 'boolean'){
       this.retreated = value
-      // add_to_log(`${nb_active_ships} ${ship_blueprint.shipType}'s have succesfully escaped`)
     }
+    return `${this.get_nb_active_ships()} ${this.shipType}(s) have succesfully escaped`
   }
   set_battle_stats = (data, playerType) => {
     this.nb_ships = data.nb_ships;
@@ -168,6 +176,7 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
     else if(this.RadioAttackRetreatValue === "attack"){
       this.wants_to_retreat = false
     }
+    console.log("wants to retreat", this.wants_to_retreat)
   }
   make_active_ships = () => {
   // make enumeration of all active ships
@@ -179,6 +188,10 @@ class ShipBlueprint{ // blueprint of one ship type (i.e. Interceptor, Cruiser, e
   this.active_ships = activeShips
   }
   update_active_ships = () => {
+    // retreated ships aren't active
+    if (this.retreated){
+      this.active_ships = []
+    }
     // dead ships aren't active ships
     var activeShips = [];
     this.active_ships.forEach((ship, idx) => {
@@ -206,7 +219,9 @@ class Player{
     this.get_active_ships = this.get_active_ships.bind(this);
     this.is_active = this.is_active.bind(this);
     this.print_active_ships = this.print_active_ships.bind(this);
+    this.update_active_ships = this.update_active_ships.bind(this);
     this.copy = this.copy.bind(this);
+    this.reset = this.reset.bind(this);
   }
   copy = (ship_dct) => {
     // if ("virtual" in ship_dct){virtual_ship_id = 0}
@@ -216,10 +231,21 @@ class Player{
     })
     return p
   }
+  reset = () => {
+    // reset itself and its children
+    for (var key of Object.keys(this.ships)){ // of gets the element, not the index
+      this.ships[key].reset()
+    }
+  }
   setup_battle = (data) => {
     Object.keys(data).forEach((shipType) => {
       this.ships[shipType].setup_battle(data[shipType], this.playerType)
     })}
+  update_active_ships = () => {
+    for (var key of Object.keys(this.ships)){ // of gets the element, not the index
+      this.ships[key].update_active_ships()
+    }
+  }
   get_active_ships = () => {
     var active_ships = []
     Object.keys(this.ships).forEach((ship) =>{
@@ -409,9 +435,12 @@ export default function BattleSim(props) {
   }, [hits.length]);
 
   React.useEffect(() => {
+    // this means the turn is done, so do all end-of-turn stuff here, including updating active ships
     if (increment_order_trigger > 0) {
+      // update ships for all players 
+      for (var player_key of Object.keys(players.current)){players.current[player_key].update_active_ships()}
       // Increment the order #
-      increment_order()
+      increment_order_2()
     }}, [increment_order_trigger]);
 
     
@@ -433,6 +462,9 @@ export default function BattleSim(props) {
     setb_battle_over(false)
     setincrement_order_trigger(0)
     setorder_id(-1)
+    for (let player_key of Object.keys(players.current)){
+      players.current[player_key].reset()
+    }
     // reset globals
     for (var key in ship_dct){
       delete ship_dct[key]
@@ -450,8 +482,25 @@ export default function BattleSim(props) {
     }
   }, [b_battle_over])
 
+  const increment_order_2 = () => {
+    // triggered when setincrement_order_trigger is called
+    var state = {'b_missile_round': b_missile_round,
+             'order_id': order_id,
+             'order': order,
+             'players': players.current,
+             'add_to_log': [],
+             }
+    var ship_blueprint = undefined
+    var [state, ship_blueprint] = get_next_ship_blueprint(state)
+    state.add_to_log.forEach((elem) => {add_to_log(elem)})
+    setb_missile_round(state.b_missile_round)
+    setorder_id(state.order_id)
+    setorder(state.order)
+    setplayerType(state.playerType)
+  }
+
   //
-  const increment_order = () => {
+  const increment_order_OLD = () => {
     // triggered when setincrement_order_trigger is called
     // if missile round
     if (b_missile_round){
@@ -481,6 +530,7 @@ export default function BattleSim(props) {
         player = players.current[order[new_order_id][Globals.ORDER_PLAYER]]
         ship_blueprint = player.ships[order[new_order_id][Globals.ORDER_SHIP]]
         retreated = ship_blueprint.retreated
+        console.log(retreated)
         count += 1
         // console.log(count < order.length, retreated, ship_blueprint.get_nb_active_ships())
       } while (count <= order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0)); // skip to next ship if this one has retreated, protection against infinite loops
@@ -531,7 +581,9 @@ export default function BattleSim(props) {
       return
     }
     
-    let hits = GetAllHits(b_missile_round, ship_blueprint)
+    let state = {'b_missile_round': b_missile_round, 'add_to_log': []}
+    let hits = GetAllHits(state, ship_blueprint)
+    state.add_to_log.forEach((elem) => {add_to_log(elem)})
     
     if (hits.length >0){
       console.log("Hits rolled: ", hits)
@@ -550,9 +602,10 @@ export default function BattleSim(props) {
         sethits_open(true)
       }
     } else{ 
-      add_to_log("Miss!")
+      if (!ship_blueprint.retreating){add_to_log("Miss!")}
+      else if (!ship_blueprint.retreated) {add_to_log(`${playerType}'s ${ship_blueprint.shipType}'s have begun to retreat`)}
       setincrement_order_trigger(increment_order_trigger + 1)
-      setrun_sim_trigger(run_sim_trigger + 1) // probs change depending on the turn order, which changes here
+      setrun_sim_trigger(run_sim_trigger + 1) // probabilities change depending on the turn order, which changes here
     }
   }
   var check_battle_over = () =>{
@@ -593,7 +646,7 @@ export default function BattleSim(props) {
       {/******** Controls *********/}
       <Stack justifyContent="space-evenly" sx={{margin:'10px', height: 500, width: 400}}> 
           <Button variant="contained" size="large" onClick={begin_battle}>Begin Battle</Button>
-          <Button variant="contained" size="large" onClick={step_engagement_round}>Roll</Button>
+          <Button variant="contained" size="large" onClick={step_engagement_round}>Engage!</Button>
           <Confirm_modal></Confirm_modal>
           <Paper style={{maxHeight: 200, overflow: 'auto'}}>
             <List sx={{height:300}}>
@@ -640,7 +693,7 @@ export default function BattleSim(props) {
 
     {/* extras */} 
     <AreYouSure open={open_alert} setOpen={setopen_alert} dialog={"Since the battle is ongoing, you're about to reset. Are you sure?"}/>
-    <motion.div style={{position: 'absolute'}} animate={{top: hand_box.top, left: hand_box.left, scaleX:hand_flipped[playerType], transition: {duration: 0.5}}}>
+    <motion.div initial={{visibility: 'invisible'}} style={{position: 'absolute'}} animate={{top: hand_box.top, left: hand_box.left, scaleX:hand_flipped[playerType], transition: {duration: 0.5}}}>
       <Box sx={{ visibility: 'visible'}} ><img  width={50} height={50} src={hand} alt="hand" /></Box>
     </motion.div>
   </Box>
