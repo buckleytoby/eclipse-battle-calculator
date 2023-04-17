@@ -13,6 +13,8 @@ import * as Globals from '../globals';
 import HitsModal from './hits_modal';
 import AreYouSure from './alert';
 import { AttributeHitsAI, GetAllHits, RunMonteCarloSim } from './ai';
+////////////// framer library for animation
+import { motion } from 'framer-motion';
 var util = require('util');
 
 const OtherPlayer = (playerType) => {
@@ -271,6 +273,13 @@ export default function BattleSim(props) {
   const [open_alert, setopen_alert] = React.useState(false);
   const [attacker_prob_win, setattacker_prob_win] = React.useState(50);
   const [defender_prob_win, setdefender_prob_win] = React.useState(50);
+  // indicator hand stuff
+  const [hand_box, sethand_box] = React.useState({top: 0, left: 0});
+  var hand_flipped = {"Attacker": -1, "Defender": 1}
+
+  // refs for DOM references
+  const HandRefs = React.useRef({})
+  const BattleSimRef = React.useRef(null)
 
   const players = React.useRef({'Attacker': new Player('Attacker', ship_dct), 'Defender': new Player('Defender', ship_dct)})
   const scrollbar_ref = React.useRef()
@@ -403,7 +412,6 @@ export default function BattleSim(props) {
     if (increment_order_trigger > 0) {
       // Increment the order #
       increment_order()
-      
     }}, [increment_order_trigger]);
 
     
@@ -485,8 +493,24 @@ export default function BattleSim(props) {
       add_to_log(`${order[new_order_id][Globals.ORDER_PLAYER]} is attacking with ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s).`)
       setorder_id(new_order_id);
       setplayerType(order[new_order_id][Globals.ORDER_PLAYER])
+      // if (BattleSimRef != null & HandRefs.current[ref] != undefined){
+      //   let parent_rect = BattleSimRef.current.getBoundingClientRect()
+      //   console.log("rect", rect, "parent", parent_rect)
+      //   let new_box = {top: parent_rect.top + rect.top, left: parent_rect.left + rect.left}
+      //   sethand_box(new_box)
+      // }
     }
   }
+
+  React.useEffect(()=>{
+    if (0 <= order_id & order_id < order.length){
+      // update hand indicator location
+      let ref = order[order_id][Globals.ORDER_PLAYER]+"_"+order[order_id][Globals.ORDER_SHIP]
+      let elem = HandRefs.current[ref]
+      let new_box = {top: elem.offsetTop, left: elem.offsetLeft}
+      sethand_box(new_box)
+    }
+  }, [order_id, order])
   
   // Battle code
   const step_engagement_round = () => {
@@ -543,23 +567,24 @@ export default function BattleSim(props) {
   }
 
   return(
-  <Box sx={{width:1500, height:500}}>
-    <Stack direction='row' justifyContent="space-between" sx={{width:1500}}>
+  <Box position='relative' ref={BattleSimRef} sx={{width:1500, height:500}}>
+    <Stack position='static' direction='row' justifyContent="space-between" sx={{width:1500}}>
       {/* Attacker Side */}
-      <Box sx={{margin:'10px', width: 400}}> 
+      <Box position='static' sx={{margin:'10px', width: 400}}> 
         <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
           <h2>Attacker</h2>
           <Paper sx={{fontSize: 25}}>Win Chance: {attacker_prob_win}%</Paper>
         </Stack>
         {Globals.shipTypes.map((shipType) => {
           {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
+          // 
           if (nb_active > 0){
             return (
-            <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+            <Stack position='static' direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
               <Paper>{shipType}</Paper>
               <Paper>Count {nb_active}</Paper>
               <RadioAttackRetreat onChange={players.current['Attacker'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
-              <Box sx={{ visibility: 'hidden' }}><img width={25} height={25} src={hand} alt="hand" /></Box>
+              <Box position='static' ref={el => (HandRefs.current["Attacker"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }}></Box>
             </Stack>
           )}}
           })}
@@ -593,7 +618,7 @@ export default function BattleSim(props) {
 
 
       {/* Defender Side */}
-      <Box sx={{margin:'10px', width: 400}}> 
+      <Box position='static' sx={{margin:'10px', width: 400}}> 
         <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
           <Paper sx={{fontSize: 25}}>Win Chance: {defender_prob_win}%</Paper>
           <h2>Defender</h2>
@@ -602,8 +627,8 @@ export default function BattleSim(props) {
           {let nb_active = players.current['Defender'].ships[shipType].get_nb_active_ships()
           if (nb_active > 0){
             return (
-            <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-              <Box sx={{ visibility: 'hidden' }} ><img width={25} height={25} src={hand} alt="hand" /></Box>
+            <Stack position='static' direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+              <Box ref={el => (HandRefs.current["Defender"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }} ></Box>
               <Paper>{shipType}</Paper>
               <Paper>Count: {nb_active}</Paper>
               <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
@@ -612,7 +637,12 @@ export default function BattleSim(props) {
           })}
       </Box>
     </Stack>
+
+    {/* extras */} 
     <AreYouSure open={open_alert} setOpen={setopen_alert} dialog={"Since the battle is ongoing, you're about to reset. Are you sure?"}/>
+    <motion.div style={{position: 'absolute'}} animate={{top: hand_box.top, left: hand_box.left, scaleX:hand_flipped[playerType], transition: {duration: 0.5}}}>
+      <Box sx={{ visibility: 'visible'}} ><img  width={50} height={50} src={hand} alt="hand" /></Box>
+    </motion.div>
   </Box>
   )
 }

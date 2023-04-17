@@ -6,8 +6,8 @@ https://www.youtube.com/watch?v=JaMapMhUdXI
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 # Packages Installed
-MUI  
-react-draggable
+npm install mui  
+npm install react-beautiful-dnd
 
 ## Available Scripts
 ### `npm start`

@@ -48,7 +48,7 @@ function App() {
           </Stack>
         </Grid>
         <Grid item> {/* Run Battle */}
-        <ResponsiveAppBar reset_default={reset_default}></ResponsiveAppBar>
+          <ResponsiveAppBar reset_default={reset_default}></ResponsiveAppBar>
           <BattleSim attacker_setup={attacker_setup} defender_setup={defender_setup} 
           data_attacker={data_attacker}
           data_defender={data_defender}

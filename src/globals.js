@@ -1,9 +1,9 @@
 
 
 
-export const ORDER_PLAYER = 0
-export const ORDER_SHIP = 1
-export const ORDER_INITIATIVE = 2
+export const ORDER_PLAYER = 0 // string playertype
+export const ORDER_SHIP = 1 // string shiptype
+export const ORDER_INITIATIVE = 2 // int nb_iniative
 export const shipTypes = ['Interceptor', 'Cruiser', 'Dreadnought', 'Starbase']
 export const ATTACK_PRIORITIES = {'Interceptor': 1, 'Cruiser': 2, 'Dreadnought': 3, 'Starbase': 4}
 export const playerType = ['Attacker', 'Defender']

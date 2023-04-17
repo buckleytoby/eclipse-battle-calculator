@@ -322,8 +322,8 @@ export function RunMonteCarloSim(players, b_missile_round, order_id, order, play
 
   // calculate probability
   if (count > 0){
-    var prob_A = wins_A / count * 100.0
-    var prob_D = wins_D / count * 100.0
+    var prob_A = wins_A / count * 100.0; prob_A = prob_A < 1 ? 1 : prob_A; prob_A = prob_A > 99 ? 99 : prob_A // bounds between 1 & 99
+    var prob_D = wins_D / count * 100.0; prob_D = prob_D < 1 ? 1 : prob_D; prob_D = prob_D < 99 ? 99 : prob_D // bounds between 1 & 99
     return [prob_A, prob_D]
   } else{
     return [0.0, 0.0]
