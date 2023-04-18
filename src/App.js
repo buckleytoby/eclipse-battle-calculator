@@ -6,6 +6,8 @@ import {ShipSelect} from './components/selector';
 import Stack from '@mui/material/Stack';
 import BattleSim from './components/battle_sim';
 import * as Globals from './globals';
+import bg_pic from './assets/bg_pic3.jpg';
+import { Paper } from '@mui/material';
 
 
 function App() {
@@ -28,19 +30,27 @@ function App() {
   }
 
   return (
-    <div className="App">
+    <div className="App"
+      style = {{
+        backgroundImage: `url(${bg_pic})`,
+        backgroundPosition: 'center',
+        backgroundSize: '100%',
+        backgroundRepeat: 'repeat',
+
+      }}
+    >
       <Grid container direction="column">
         <Grid item> {/* Battle setup */}
           <ResponsiveAppBar reset_default={reset_default}></ResponsiveAppBar>
           <Stack direction="row" spacing={2}>
             <Box sx={{marginX: "50px", width: 650}}> {/* Attacker setup */}
-              <h1>Attacker Setup</h1>
+              <Paper style={{opacity: 0.5}} ><h1>Attacker Setup</h1></Paper>
             {Globals.shipTypes.map((shipType) => (
               <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_attacker} setup_trigger={setattacker_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>
             ))}
             </Box>
             <Box sx={{marginX: "50px", width: 650}}> {/* Defender setup */}
-              <h1>Defender Setup</h1>
+              <Paper style={{opacity: 0.5}} ><h1>Defender Setup</h1></Paper>
             {Globals.shipTypes.map((shipType) => (
               <h2>{shipType} <ShipSelect shipType={shipType} reset_trigger={reset_trigger} data={data_defender} setup_trigger={setdefender_setup} begin_battle_trigger={begin_battle_trigger}></ShipSelect> </h2>
             ))}

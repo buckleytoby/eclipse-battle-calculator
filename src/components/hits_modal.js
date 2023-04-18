@@ -8,6 +8,8 @@ import {Divider} from '@mui/material';
 import explosion from '../assets/explosion_lowres.png'
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import AreYouSure from './alert';
+import * as Icons from './icons'
+import * as Globals from '../globals'
 
 
 function active_player(props){
@@ -27,11 +29,10 @@ function active_player(props){
                         {...provided.draggableProps}
                         {...provided.dragHandleProps} >
                           
-                <Stack direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-                  <Paper>Damage: {hit[2]}</Paper>
-                  <Paper>Roll #: {hit[0]}</Paper>
-                  <Paper>Computer-Aided Roll: {hit[1]}</Paper>
-                  <img width={25} height={25} src={explosion} alt="explosion" />
+                <Stack direction='row' alignItems="center" justifyContent="" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
+                  <Icons.DamageGiven content={hit[2]} />
+                  <Icons.Dice content={hit[1]} />
+                  <Icons.Icon content='Drag Me!' />
                 </Stack>
               </div>
               )}</Draggable>
@@ -44,10 +45,13 @@ function active_player(props){
 }
 
 function inactive_player(props){
+
   // list of active ships, current damage, and computer
   return(
-    <Box sx={{margin:'10px', width: 400}}> 
-    {props.inactive_ships.map((inactive_ship) => (
+    <Box sx={{margin:'10px', width: 'auto'}}> 
+    {props.inactive_ships.map((inactive_ship) => {
+      let ShipIcon = Icons.ShipIcons[inactive_ship.shipType]
+      return (
       <Droppable droppableId={`${inactive_ship.id}`}>
         {provided => (
         <div
@@ -55,15 +59,15 @@ function inactive_player(props){
                     {...provided.droppableProps} >
           <Stack 
           direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-            <Paper>{inactive_ship.shipType}</Paper>
-            <Paper># Hulls: {inactive_ship.nb_hull}</Paper>
-            <Paper># Shields: {inactive_ship.nb_shields}</Paper>
-            <Paper>Current Damage: {inactive_ship.damage_taken}</Paper>
+            <ShipIcon content='' />
+            <Icons.Shields content={inactive_ship.nb_shields} />
+            <Icons.Hulls content={inactive_ship.nb_hull} />
+            <Icons.Damage content={inactive_ship.damage_taken} />
             {provided.placeholder} 
           </Stack>
         </div>
       )}</Droppable>
-    ))}
+    )})}
     </Box>
   )
 }

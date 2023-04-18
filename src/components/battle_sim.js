@@ -15,6 +15,7 @@ import AreYouSure from './alert';
 import { AttributeHitsAI, GetAllHits, RunMonteCarloSim, get_next_ship_blueprint} from './ai';
 ////////////// framer library for animation
 import { motion } from 'framer-motion';
+import * as Icons from './icons'
 var util = require('util');
 
 const OtherPlayer = (playerType) => {
@@ -561,8 +562,11 @@ export default function BattleSim(props) {
       // update hand indicator location
       let ref = order[order_id][Globals.ORDER_PLAYER]+"_"+order[order_id][Globals.ORDER_SHIP]
       let elem = HandRefs.current[ref]
-      let new_box = {top: elem.offsetTop, left: elem.offsetLeft}
-      sethand_box(new_box)
+      console.log('elem', elem)
+      if (elem !== null){
+        let new_box = {top: elem.offsetTop, left: elem.offsetLeft}
+        sethand_box(new_box)
+      }
     }
   }, [order_id, order])
 
@@ -630,7 +634,7 @@ export default function BattleSim(props) {
   }
 
   return(
-  <Box position='relative' ref={BattleSimRef} sx={{width:1500, height:500}}>
+  <Box marginLeft='50px' marginBottom='50px' position='relative' ref={BattleSimRef} sx={{width:1500, height:500}}>
     <Stack position='static' direction='row' justifyContent="space-between" sx={{width:1500}}>
       {/* Attacker Side */}
       <Box position='static' sx={{margin:'10px', width: 400}}> 
@@ -640,14 +644,15 @@ export default function BattleSim(props) {
         </Stack>
         {Globals.shipTypes.map((shipType) => {
           {let nb_active = players.current['Attacker'].ships[shipType].get_nb_active_ships()
+          let ShipIcon = Icons.ShipIcons[shipType]
           // 
           if (nb_active > 0){
             return (
             ////////////////////////////// Ship Card //////////////////////////////
-            <motion.div  animate={{ backgroundColor: ["Attacker"+"_"+shipType] in retreat_colors ? retreat_color_array : ''}} transition={{ repeat: Infinity, duration: 3.0 }}>
+            <motion.div style={{borderRadius: '10px', backgroundColor: '#fff'}} animate={{ backgroundColor: ["Attacker"+"_"+shipType] in retreat_colors ? retreat_color_array : '#fff'}} transition={{ repeat: Infinity, duration: 3.0 }}>
             <Stack position='static' direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-              <Paper>{shipType}</Paper>
-              <Paper>Count {nb_active}</Paper>
+              <ShipIcon content='' />
+              <Icons.Ships content={nb_active} />
               <RadioAttackRetreat onChange={players.current['Attacker'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
               <Box position='static' ref={el => (HandRefs.current["Attacker"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }}></Box>
             </Stack>
@@ -691,14 +696,15 @@ export default function BattleSim(props) {
         </Stack>
         {Globals.shipTypes.map((shipType) => {
           {let nb_active = players.current['Defender'].ships[shipType].get_nb_active_ships()
+          let ShipIcon = Icons.ShipIcons[shipType]
           if (nb_active > 0){
             return (
             ////////////////////////////// Ship Card //////////////////////////////
-            <motion.div  animate={{ backgroundColor: (["Defender"+"_"+shipType] in retreat_colors) ? retreat_color_array : ''}} transition={{ repeat: Infinity, duration: 3.0 }}>
+            <motion.div style={{borderRadius: '10px', backgroundColor: '#fff'}} animate={{ backgroundColor: (["Defender"+"_"+shipType] in retreat_colors) ? retreat_color_array : '#fff'}} transition={{ repeat: Infinity, duration: 3.0 }}>
             <Stack position='static' direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
               <Box ref={el => (HandRefs.current["Defender"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }} ></Box>
-              <Paper>{shipType}</Paper>
-              <Paper>Count: {nb_active}</Paper>
+              <ShipIcon content='' />
+              <Icons.Ships content={nb_active} />
               <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
             </Stack></motion.div>
           )}}
