@@ -2,7 +2,7 @@
 https://s3.amazonaws.com/eclipse-calculator/eclipse-calculator.htm 
 
 # Demo Video of the Website:
-https://www.youtube.com/watch?v=JaMapMhUdXI  
+https://youtu.be/ef9dA5gmciw  
 
 # Bug list / TODO
 * TEST: when one person has no cannons, they must be forced to retreat
@@ -11,6 +11,7 @@ https://www.youtube.com/watch?v=JaMapMhUdXI
 * TODO: load / save config
 * TODO: show damage taken on each ship in blueprint cards
 * TODO: flash yellow on hit modals for retreating ships
+* TODO: undo action?
 * BUG: orange missiles aren't being used?
 * BUG: sim thinks it's in missile round even though both ships start with no missiles
 * BUG: no cannons and no missiles and Attacker is not forced to retreat

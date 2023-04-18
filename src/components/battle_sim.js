@@ -654,7 +654,8 @@ export default function BattleSim(props) {
               <ShipIcon content='' />
               <Icons.Ships content={nb_active} />
               <RadioAttackRetreat onChange={players.current['Attacker'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
-              <Box position='static' ref={el => (HandRefs.current["Attacker"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }}></Box>
+              <Box position='static' ref={el => (HandRefs.current["Attacker"+"_"+shipType] = el)} sx={{width: 5, height:20, visibility: 'invisible' }}></Box>
+              <Box position='static' sx={{width: 30, height:20, visibility: 'invisible' }}></Box>
             </Stack>
             </motion.div>
           )}}
@@ -702,7 +703,7 @@ export default function BattleSim(props) {
             ////////////////////////////// Ship Card //////////////////////////////
             <motion.div style={{borderRadius: '10px', backgroundColor: '#fff'}} animate={{ backgroundColor: (["Defender"+"_"+shipType] in retreat_colors) ? retreat_color_array : '#fff'}} transition={{ repeat: Infinity, duration: 3.0 }}>
             <Stack position='static' direction='row' alignItems="center" justifyContent="space-between" spacing={0} sx={{padding: 1, boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
-              <Box ref={el => (HandRefs.current["Defender"+"_"+shipType] = el)} sx={{ visibility: 'invisible' }} ></Box>
+              <Box ref={el => (HandRefs.current["Defender"+"_"+shipType] = el)} sx={{width: 20, height:20, visibility: 'invisible' }} ></Box>
               <ShipIcon content='' />
               <Icons.Ships content={nb_active} />
               <RadioAttackRetreat onChange={players.current['Defender'].ships[shipType].set_retreat_attack}></RadioAttackRetreat>
@@ -714,7 +715,7 @@ export default function BattleSim(props) {
 
     {/* extras */} 
     <AreYouSure open={open_alert} setOpen={setopen_alert} dialog={"Since the battle is ongoing, you're about to reset. Are you sure?"}/>
-    <motion.div initial={{visibility: 'invisible'}} style={{position: 'absolute'}} animate={{top: hand_box.top, left: hand_box.left, scaleX:hand_flipped[playerType], transition: {duration: 0.5}}}>
+    <motion.div initial={{visibility: 'invisible'}} style={{position: 'absolute'}} animate={{top: hand_box.top, left: hand_box.left, scaleX:hand_flipped[playerType], transition: {duration: 0.4}}}>
       <Box sx={{ visibility: 'visible'}} ><img  width={50} height={50} src={hand} alt="hand" /></Box>
     </motion.div>
   </Box>

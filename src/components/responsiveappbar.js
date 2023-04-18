@@ -2,7 +2,7 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 
-const pages = ['Reset Default', 'Load Preset', 'Load Ancient'];
+const pages = ['Reset Default', 'Load Config', 'Save Config'];
 
 function ResponsiveAppBar(props) {
   var callbacks = {
