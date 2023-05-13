@@ -78,18 +78,28 @@ const defaults = {
 }
 
 if (Globals.TEST){
-  defaults.Interceptor.nb_ships = 1
-  defaults.Interceptor.nb_yellow_missiles = 2
-  defaults.Interceptor.nb_computers = 1
-  defaults.Cruiser.nb_ships = 1
-  defaults.Cruiser.nb_orange = 2
-  defaults.Cruiser.nb_hull = 1
-  defaults.Cruiser.nb_computers = 2
-  defaults.Dreadnought.nb_ships = 1
-  defaults.Dreadnought.nb_yellow = 1
-  // defaults.Dreadnought.nb_shields = 0
-  defaults.Dreadnought.nb_computers = 0
-  defaults.Dreadnought.nb_hull = 4
+  defaults.Interceptor.nb_ships = 5
+  defaults.Interceptor.nb_yellow = 0
+  defaults.Interceptor.nb_orange_missiles = 0
+  defaults.Interceptor.nb_computers = 5
+  // defaults.Cruiser.nb_ships = 1
+  // defaults.Cruiser.nb_orange = 2
+  // defaults.Cruiser.nb_hull = 1
+  // defaults.Cruiser.nb_computers = 2
+  // defaults.Dreadnought.nb_ships = 1
+  // defaults.Dreadnought.nb_yellow = 1
+  // // defaults.Dreadnought.nb_shields = 0
+  // defaults.Dreadnought.nb_computers = 0
+  // defaults.Dreadnought.nb_hull = 4
+
+  // stress test, turn everything on
+  for (let ship of Object.keys(defaults)){
+    for (let key of Object.keys(defaults[ship])){
+      if (key != "nb_initiative"){
+        defaults[ship][key] = 1
+      }
+    }
+  }
 }
 
 function Selector(props){

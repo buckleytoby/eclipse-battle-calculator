@@ -31,7 +31,7 @@ function active_player(props){
                           
                 <Stack direction='row' alignItems="center" justifyContent="" spacing={0} sx={{padding: 1, bgcolor: 'background.paper', boxShadow: 1, borderRadius: 2, marginY:'10px'}}>
                   <Icons.DamageGiven content={hit[2]} />
-                  <Icons.Dice content={hit[1]} />
+                  <Icons.Dice content={hit[1] > 20 ? "∞" : hit[1]} />
                   <Icons.Icon content='Drag Me!' />
                 </Stack>
               </div>

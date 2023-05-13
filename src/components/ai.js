@@ -38,14 +38,13 @@ const calc_hit_roll = (computers) => {
   if (result === 1){return 0}
   // auto hit if 6
   if (result === 6){return 99}
-  // else, add computer
   return result;
 }
 // get ship hits
 const get_hits = (hits, nb_computers, nb_die, dmgType) => {
   [...Array(nb_die)].forEach(() => {
     var result = calc_hit_roll(nb_computers)
-    if (result + nb_computers >= 6){
+    if ((result + nb_computers) >= 6){
       hits.push( [result, result + nb_computers, damages[dmgType]] )
     }
   })
@@ -61,11 +60,13 @@ export function GetAllHits(state, ship_blueprint) {
     state.add_to_log.push( ship_blueprint.set_retreated(true) )
   } else if (ship_blueprint.wants_to_retreat){ // Begin retreating
     ship_blueprint.retreating = true;
+    // for the purposes of ship blueprint order, if you retreat, you lose your missiles (but for the logic of the code, keep cannons)
+    ship_blueprint.b_has_missiles = false;
   } else{
     if (state.b_missile_round) { // Missiles
       // roll for missiles
       get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_yellow_missiles, "yellow_missiles")
-      get_hits(hits, ship_blueprint, ship_blueprint.nb_orange_missiles, "orange_missiles")
+      get_hits(hits, ship_blueprint.nb_computers, nb_active_ships * ship_blueprint.nb_orange_missiles, "orange_missiles")
       // set missile status to none
       ship_blueprint.b_has_missiles = false
     } else{ // Roll cannons
@@ -98,6 +99,8 @@ export function AttributeHitsAI(inactive_ships, hits, dmg_fcn){
       // can't hit any ships with this hit
       return
     }
+
+    // filter via which ships can be killed
     var can_kill = can_hit.filter(ship => (ship.nb_hull + 1) <= (ship.damage_taken + hit[2]))
     if (can_kill.length > 0){
       // Kill ships biggest to smallest
@@ -113,48 +116,64 @@ export function AttributeHitsAI(inactive_ships, hits, dmg_fcn){
   });
 }
 
-const calc_battle_order = (players, is_missile_round = true) => {
+export const calc_battle_order = (state) => {
   // determine battle order
   var ls = []
+  var players = state.players
   // construct list of [playerType, shipType, initiative]
   Object.keys(players).forEach((playerType) => ( shipTypes.forEach((shipType) => {
-      let ship = players[playerType].ships[shipType]
-      if (is_missile_round & ship.nb_ships > 0 & ship.b_has_missiles){
+      let ship = players[playerType].ships[shipType] // ship blueprint
+      if (state.b_missile_round & ship.nb_ships > 0 & ship.b_has_missiles){
         ls.push([playerType, shipType, ship.nb_initiative])
-      } else if(ship.nb_ships > 0){
+      } else if(ship.nb_ships > 0 & ship.b_has_cannons){
         ls.push([playerType, shipType, ship.nb_initiative])
       }})))
   ls.sort((a, b) => {return b[2] - a[2]}) // query the initiative  // sorts in place
   // check for no ships cannons ... Attacker automatically loses
-  if (!is_missile_round & ls.length === 0){ return []; } 
+  if (!state.b_missile_round & ls.length === 0){ return []; } 
   // check if skip missile round
-  if (is_missile_round & ls.length === 0){
-    // rerun itself
-    return calc_battle_order(players, false)
+  if (state.b_missile_round & ls.length === 0){
+    // rerun itself, and set missile round to false
+    state.b_missile_round = false
+    return calc_battle_order(state)
   }
+  console.log('battle order: ', ls)
   return ls
+}
+
+const loop_find_next = (state, new_order_id, bool_checker_name) => {
+  let count = 0
+  var retreated = false
+  let p = undefined; let s = undefined; let ship_blueprint = undefined
+  do {
+    // find next valid ship blueprint with bool_checker_name
+    new_order_id = (new_order_id + 1) % state.order.length
+    p = state.order[new_order_id][ORDER_PLAYER];
+    s = state.order[new_order_id][ORDER_SHIP]
+    ship_blueprint = state.players[p].ships[s]
+    // check retreated
+    retreated = ship_blueprint.retreated
+    // check for no active cannons
+    count += 1
+  } while (count <= state.order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0 | !ship_blueprint[bool_checker_name])); // skip to next ship if this one has retreated, protection against infinite loops
+  return [count, new_order_id]
 }
 
 export const get_next_ship_blueprint = (state) => {
   var ship_blueprint = undefined
   var new_order_id = state.order_id // initial value of state.order_id should be -1 .... but what about after 'roll'?
-  // if missile round
+  let count = 0;
   if (state.b_missile_round){
-    new_order_id += 1
-    if (new_order_id >= state.order.length){ // end of missile round
+    // missile round
+    [count, new_order_id] = loop_find_next(state, new_order_id, 'b_has_missiles')
+    if (count > state.order.length){
+      // end of missile round
       state.b_missile_round = false
       // rerun calc battle order
-      state.b_missile_round = false
-      state.order = calc_battle_order(state.players, state.b_missile_round)
-      new_order_id = 0 // first cannon round
-      if (state.order.length > 0){
-        let p = state.order[new_order_id][ORDER_PLAYER];
-        let s = state.order[new_order_id][ORDER_SHIP]
-        ship_blueprint = state.players[p].ships[s]
-      }
-    }
-    else{
-      // console.log("order: ", state.order)
+      state.order = calc_battle_order(state)
+      state.order_id = -1
+      return get_next_ship_blueprint(state)
+    } else {
       let p = state.order[new_order_id][ORDER_PLAYER];
       let s = state.order[new_order_id][ORDER_SHIP]
       ship_blueprint = state.players[p].ships[s]
@@ -162,24 +181,18 @@ export const get_next_ship_blueprint = (state) => {
     }
   }
   else{
-    let count = 0
-    var player = undefined
-    var retreated = false
-    let p = undefined; let s = undefined
-    do {
-      new_order_id = (new_order_id + 1) % state.order.length
-      p = state.order[new_order_id][ORDER_PLAYER];
-      s = state.order[new_order_id][ORDER_SHIP]
-      ship_blueprint = state.players[p].ships[s]
-      retreated = ship_blueprint.retreated
-      count += 1
-    } while (count <= state.order.length & (retreated | ship_blueprint.get_nb_active_ships() === 0)); // skip to next ship if this one has retreated, protection against infinite loops
+    // cannon round
+    [count, new_order_id] = loop_find_next(state, new_order_id, 'b_has_cannons')
     if (count > state.order.length){
       state.add_to_log.push("No ships have cannons. Attacker is forced to retreat. Battle over.")
       return [state, undefined]
     } else {
+      let p = state.order[new_order_id][ORDER_PLAYER];
+      let s = state.order[new_order_id][ORDER_SHIP]
+      ship_blueprint = state.players[p].ships[s]
       state.add_to_log.push(`${p} is attacking with ${ship_blueprint.get_nb_active_ships()} ${ship_blueprint.shipType}(s).`)
     }
+    
   }
   state.order_id = new_order_id
   state.playerType = state.order[new_order_id][ORDER_PLAYER]
@@ -301,12 +314,12 @@ function make_state_copy(players, b_missile_round, order_id, order, playerType, 
 
 export function RunMonteCarloSim(players, b_missile_round, order_id, order, playerType, _ship_dct_id){
   // runs out the rest of the battle X times and collate the results
-  var nb_iterations = 200
+  var nb_iterations = 0
   var wins_A = 0
   var wins_D = 0
   var count = 0
 
-  console.log(players, b_missile_round, order_id, order, playerType, _ship_dct_id)
+  // console.log(players, b_missile_round, order_id, order, playerType, _ship_dct_id)
 
   // make some copies so we don't modify original data from the game state
   // var players = current_state
